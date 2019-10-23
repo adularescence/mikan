@@ -6,4 +6,4 @@ const wait_times = [
   }
 ];
 
-export default wait_times;
+module.exports = wait_times;
