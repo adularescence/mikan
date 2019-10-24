@@ -10,30 +10,32 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
 
-// get all wait times
+
+/* GET */
+
+// all
 app.get('/api/v1/waitTimes', (req, res) => {
   res.status(200).send({
     success: 'true',
     message: 'wait times retrieved successfully',
-    waitTimes: db
+    data: db
   });
 });
 
+// for n guests
 app.get('/api/v1/waitTimes/:guests', (req, res) => {
   const guests = parseInt(req.params.guests);
   const results = [];
   db.map(waitTime => {
     if (waitTime.guests === guests) {
       results.push(waitTime);
-    } else {
-      console.log(waitTime)
     }
   });
   if (results.length !== 0) {
     return res.status(200).send({
       success: 'true',
       message: `wait times for a guest count of ${guests} retrieved successfully`,
-      results
+      data: results
     });
   } else {
     return res.status(404).send({
@@ -44,7 +46,10 @@ app.get('/api/v1/waitTimes/:guests', (req, res) => {
 });
 
 
-// post to wait times
+
+/* POST */
+
+// add a new entry
 app.post('/api/v1/waitTimes', (req, res) => {
   if (!req.body.guests) {
     return res.status(400).send({
@@ -63,18 +68,34 @@ app.post('/api/v1/waitTimes', (req, res) => {
     });
   }
 
-  const waitTime = {
+  const newEntry = {
     guests: parseInt(req.body.guests),
     timestamp: req.body.timestamp,
     table: req.body.table
   };
-  db.push(waitTime);
+  db.push(newEntry);
   return res.status(201).send({
     success: 'true',
-    message: 'todo added successfully',
-    waitTime
+    message: 'entry added successfully',
+    data: newEntry
   });
 });
+
+
+
+/* PUT */
+
+// update an entry
+app.put('/api/v1/waitTimes/:guests', (req, res) => {
+  const guests = parseInt(req.params.guests);
+  const timestamp = parseInt(req.params.timestamp);
+
+  db.map((entry, index) => {
+
+  });
+});
+
+
 
 app.listen(port, () => {
   console.log(`server running on port ${port}`);
