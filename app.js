@@ -11,6 +11,32 @@ app.use(bodyParser.urlencoded({ extended: false }));
 
 
 
+/* DELETE */
+
+// delete an entry
+app.delete('/api/v1/waitTimes/:guests', (req, res) => {
+  const guests = parseInt(req.params.guests);
+  const timestamp = parseInt(req.query.timestamp);
+
+  for (let i = 0; i < db.length; i++) {
+    if (db[i].guests === guests && db[i].timestamp === timestamp) {
+      const removedEntry = db.splice(i, 1);
+      return res.status(200).send({
+        success: 'true',
+        message: `deleted entry with a guest count of ${guests} and a timestamp of ${timestamp} successfully`,
+        data: removedEntry
+      });
+    }
+  }
+
+  return res.status(404).send({
+    success: 'false',
+    message: `no entry found for a guest count of ${guests} and a timestamp of ${timestamp}`
+  });
+});
+
+
+
 /* GET */
 
 // all
@@ -86,7 +112,6 @@ app.post('/api/v1/waitTimes', (req, res) => {
 
 // update an entry
 app.put('/api/v1/waitTimes/:guests', (req, res) => {
-  console.log(req.params)
   const guests = parseInt(req.params.guests);
   const timestamp = parseInt(req.query.timestamp);
   let foundIndex = -1;
