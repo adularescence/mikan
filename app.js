@@ -25,11 +25,8 @@ app.get('/api/v1/waitTimes', (req, res) => {
 // for n guests
 app.get('/api/v1/waitTimes/:guests', (req, res) => {
   const guests = parseInt(req.params.guests);
-  const results = [];
-  db.map(waitTime => {
-    if (waitTime.guests === guests) {
-      results.push(waitTime);
-    }
+  const results = db.map(waitTime => {
+    waitTime.guests === guests;
   });
   if (results.length !== 0) {
     return res.status(200).send({
@@ -56,12 +53,14 @@ app.post('/api/v1/waitTimes', (req, res) => {
       success: 'false',
       message: 'guest count required'
     });
-  } else if (!req.body.timestamp) {
+  }
+  if (!req.body.timestamp) {
     return res.status(400).send({
       success: 'false',
       message: 'timestamp is required'
     });
-  } else if (!req.body.table) {
+  }
+  if (!req.body.table) {
     return res.status(400).send({
       success: 'false',
       message: 'table number is required'
@@ -87,11 +86,41 @@ app.post('/api/v1/waitTimes', (req, res) => {
 
 // update an entry
 app.put('/api/v1/waitTimes/:guests', (req, res) => {
+  console.log(req.params)
   const guests = parseInt(req.params.guests);
-  const timestamp = parseInt(req.params.timestamp);
+  const timestamp = parseInt(req.query.timestamp);
+  let foundIndex = -1;
 
-  db.map((entry, index) => {
+  for (let i = 0; i < db.length; i++) {
+    if (db[i].guests === guests && db[i].timestamp === timestamp) {
+      foundIndex = i;
+      break;
+    }
+  }
 
+  if (foundIndex === -1) {
+    return res.status(404).send({
+      success: 'false',
+      message: `no entry found for a guest count of ${guests} and a timestamp of ${timestamp}`
+    });
+  }
+  if (!req.body.table) {
+    return res.status(400).send({
+      success: 'false',
+      message: 'table number is required'
+    });
+  }
+
+  const updatedEntry = {
+    guests: guests,
+    timestamp: timestamp,
+    table: parseInt(req.body.table)
+  };
+  db.splice(foundIndex, 1, updatedEntry);
+  res.status(201).send({
+    success: 'true',
+    messasge: `entry with a guest count of ${guests} and a timestamp of ${timestamp} updated to have table ${req.body.table}`,
+    data: updatedEntry
   });
 });
 
