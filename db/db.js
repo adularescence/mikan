@@ -1,4 +1,4 @@
-const wait_times = [
+const waitTimes = [
   {
     guests: 4,
     timestamp: 1571786708,
@@ -6,4 +6,17 @@ const wait_times = [
   }
 ];
 
-module.exports = wait_times;
+const guestList = [
+
+];
+
+// this is going to be a pita
+const tableList = [
+
+];
+
+module.exports = {
+  waitTimes: waitTimes,
+  guestList: guestList,
+  tableList: tableList
+}
