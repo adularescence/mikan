@@ -72,6 +72,15 @@ app.get('/api/v1/waitTimes/:guests', (req, res) => {
   }
 });
 
+// guest list
+app.get(`/api/v1/guestList`, (req, res) => {
+  res.status(200).send({
+    success: "true",
+    message: "guest list retrieved successfully",
+    data: guestList
+  });
+});
+
 
 
 /* POST */
@@ -107,6 +116,47 @@ app.post('/api/v1/waitTimes', (req, res) => {
     success: 'true',
     message: 'entry added successfully',
     data: newEntry
+  });
+});
+
+// add to guest list
+app.post(`/api/v1/guestList`, (req, res) => {
+  if (!req.body.name) {
+    return res.status(400).send({
+      success: "false",
+      message: "guest name is required"
+    });
+  }
+  if (!req.body.count) {
+    return res.status(400).send({
+      success: "false",
+      message: "number of guests is required"
+    });
+  }
+  if (!req.body.adults) {
+    return res.status(400).send({
+      success: "false",
+      message: "number of adults is required"
+    });
+  }
+  if (!req.body.children) {
+    return res.status(400).send({
+      success: "false",
+      message: "number of children is required"
+    });
+  }
+
+  const newGuest = {
+    name: req.body.name,
+    count: req.body.count,
+    adults: req.body.adults,
+    children: req.body.children
+  };
+  guestList.push(newGuest);
+  return res.status(201).send({
+    success: "true",
+    message: `added ${req.body.name} to guest list, position ${guestList.length + 1}`,
+    data: newGuest
   });
 });
 
