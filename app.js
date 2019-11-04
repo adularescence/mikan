@@ -9,6 +9,10 @@ const port = 5000;
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
+const waitTimes = db.waitTimes;
+const guestList = db.guestList;
+const tableList = db.tableList;
+
 
 
 /* DELETE */
@@ -18,9 +22,9 @@ app.delete('/api/v1/waitTimes/:guests', (req, res) => {
   const guests = parseInt(req.params.guests);
   const timestamp = parseInt(req.query.timestamp);
 
-  for (let i = 0; i < db.length; i++) {
+  for (let i = 0; i < waitTimes.length; i++) {
     if (db[i].guests === guests && db[i].timestamp === timestamp) {
-      const removedEntry = db.splice(i, 1);
+      const removedEntry = waitTimes.splice(i, 1);
       return res.status(200).send({
         success: 'true',
         message: `deleted entry with a guest count of ${guests} and a timestamp of ${timestamp} successfully`,
@@ -44,14 +48,14 @@ app.get('/api/v1/waitTimes', (req, res) => {
   res.status(200).send({
     success: 'true',
     message: 'wait times retrieved successfully',
-    data: db
+    data: waitTimes
   });
 });
 
 // for n guests
 app.get('/api/v1/waitTimes/:guests', (req, res) => {
   const guests = parseInt(req.params.guests);
-  const results = db.map(waitTime => {
+  const results = map(waitTime => {
     waitTime.guests === guests;
   });
   if (results.length !== 0) {
@@ -98,7 +102,7 @@ app.post('/api/v1/waitTimes', (req, res) => {
     timestamp: req.body.timestamp,
     table: req.body.table
   };
-  db.push(newEntry);
+  waitTimes.push(newEntry);
   return res.status(201).send({
     success: 'true',
     message: 'entry added successfully',
@@ -141,7 +145,7 @@ app.put('/api/v1/waitTimes/:guests', (req, res) => {
     timestamp: timestamp,
     table: parseInt(req.body.table)
   };
-  db.splice(foundIndex, 1, updatedEntry);
+  db.waitTimes.splice(foundIndex, 1, updatedEntry);
   res.status(201).send({
     success: 'true',
     messasge: `entry with a guest count of ${guests} and a timestamp of ${timestamp} updated to have table ${req.body.table}`,
