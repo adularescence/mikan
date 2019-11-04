@@ -81,6 +81,14 @@ app.get(`/api/v1/guestList`, (req, res) => {
   });
 });
 
+// table list
+app.get(`/api/v1/tableList`, (req, res) => {
+  res.status(200).send({
+    success: `true`,
+    message: `table list retrieved successfully`,
+    data: tableList
+  });
+});
 
 
 /* POST */
