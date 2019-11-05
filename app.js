@@ -83,7 +83,7 @@ app.get(`/api/v1/guestList`, (req, res) => {
 
 // table list
 app.get(`/api/v1/tableList`, (req, res) => {
-  const constraints = constraintFactory(0, 0, 0, 0, 0, 1);
+  const constraints = constraintsFactory(0, 0, 0, 0, 0, 1);
   const preCheckVerdict = requestPreCheck(req, constraints);
   if (preCheckVerdict !== ``) {
     res.status(400).send({
@@ -240,7 +240,7 @@ app.put(`/api/v1/waitTimes/:guests`, (req, res) => {
 
 
 // helper functions
-const constraintFactory = (
+const constraintsFactory = (
   bodyMin, bodyMax,
   paramMin, paramMax,
   queryMin, queryMax
