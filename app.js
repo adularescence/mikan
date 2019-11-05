@@ -83,9 +83,16 @@ app.get(`/api/v1/guestList`, (req, res) => {
 
 // table list
 app.get(`/api/v1/tableList`, (req, res) => {
-  if (req.query.vacant !== undefined) {
+  const constraints = constraintFactory(0, 0, 0, 0, 0, 1);
+  const preCheckVerdict = requestPreCheck(req, constraints);
+  if (preCheckVerdict !== ``) {
+    res.status(400).send({
+      success: `false`,
+      message: preCheckVerdict
+    });
+  } else if (req.query.vacant !== undefined) {
     const vacancyQuery = req.query.vacant;
-    if (vacancyQuery !== "false" && vacancyQuery !== "true") {
+    if (vacancyQuery !== `false` && vacancyQuery !== `true`) {
       res.status(400).send({
         success: `false`,
         message: `vacant must be either true or false`
@@ -230,6 +237,40 @@ app.put('/api/v1/waitTimes/:guests', (req, res) => {
   });
 });
 
+
+
+// helper functions
+const constraintFactory = (
+  bodyMin, bodyMax,
+  paramMin, paramMax,
+  queryMin, queryMax
+) => {
+  return {
+    body: {
+      minLength: bodyMin,
+      maxLength: bodyMax
+    },
+    param: {
+      minLength: paramMin,
+      maxLength: paramMax
+    },
+    query: {
+      minLength: queryMin,
+      maxLength: queryMax
+    }
+  };
+};
+const requestPreCheck = (req, constraints) => {
+  let verdict = ``;
+  Object.keys(constraints).forEach(key => {
+    if (Object.keys(req[`${key}`]).length > constraints[`${key}`].maxLength) {
+      verdict += `The number of ${key} arguments exceeds the alloted amount (${constraints[`${key}`].maxLength}). `;
+    } else if (Object.keys(req[`${key}`]).length < constraints[`${key}`].minLength) {
+      verdict += `The number of ${key} arguments exceeds the alloted amount (${constraints[`${key}`].minLengtht}). `;
+    }
+  });
+  return verdict.trimEnd();
+};
 
 
 app.listen(port, () => {
