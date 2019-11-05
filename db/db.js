@@ -195,7 +195,7 @@ const tableList = [
     "number": "66",
     "type": "deuce",
     "count": "2",
-    "vacant": "true"
+    "vacant": "false"
   }
 ];
 

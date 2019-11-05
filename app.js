@@ -83,11 +83,30 @@ app.get(`/api/v1/guestList`, (req, res) => {
 
 // table list
 app.get(`/api/v1/tableList`, (req, res) => {
-  res.status(200).send({
-    success: `true`,
-    message: `table list retrieved successfully`,
-    data: tableList
-  });
+  if (req.query.vacant !== undefined) {
+    const vacancyQuery = req.query.vacant;
+    if (vacancyQuery !== "false" && vacancyQuery !== "true") {
+      res.status(400).send({
+        success: `false`,
+        message: `vacant must be either true or false`
+      });
+    } else {
+      const vacantTables = tableList.filter(table => {
+        return table.vacant === vacancyQuery;
+      });
+      res.status(200).send({
+        success: `true`,
+        message: `tables with vacant = '${vacancyQuery}' retrieved successfully`,
+        data: vacantTables
+      });
+    }
+  } else {
+    res.status(200).send({
+      success: `true`,
+      message: `table list retrieved successfully`,
+      data: tableList
+    });
+  }
 });
 
 
