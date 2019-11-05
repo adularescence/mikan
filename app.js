@@ -1,6 +1,6 @@
-const express = require('express');
-const db = require('./db/db.js');
-const bodyParser = require('body-parser');
+const express = require(`express`);
+const db = require(`./db/db.js`);
+const bodyParser = require(`body-parser`);
 
 const app = express();
 const port = 5000;
@@ -18,7 +18,7 @@ const tableList = db.tableList;
 /* DELETE */
 
 // delete an entry
-app.delete('/api/v1/waitTimes/:guests', (req, res) => {
+app.delete(`/api/v1/waitTimes/:guests`, (req, res) => {
   const guests = parseInt(req.params.guests);
   const timestamp = parseInt(req.query.timestamp);
 
@@ -26,7 +26,7 @@ app.delete('/api/v1/waitTimes/:guests', (req, res) => {
     if (db[i].guests === guests && db[i].timestamp === timestamp) {
       const removedEntry = waitTimes.splice(i, 1);
       return res.status(200).send({
-        success: 'true',
+        success: `true`,
         message: `deleted entry with a guest count of ${guests} and a timestamp of ${timestamp} successfully`,
         data: removedEntry
       });
@@ -34,7 +34,7 @@ app.delete('/api/v1/waitTimes/:guests', (req, res) => {
   }
 
   return res.status(404).send({
-    success: 'false',
+    success: `false`,
     message: `no entry found for a guest count of ${guests} and a timestamp of ${timestamp}`
   });
 });
@@ -44,29 +44,29 @@ app.delete('/api/v1/waitTimes/:guests', (req, res) => {
 /* GET */
 
 // all
-app.get('/api/v1/waitTimes', (req, res) => {
+app.get(`/api/v1/waitTimes`, (req, res) => {
   res.status(200).send({
-    success: 'true',
-    message: 'wait times retrieved successfully',
+    success: `true`,
+    message: `wait times retrieved successfully`,
     data: waitTimes
   });
 });
 
 // for n guests
-app.get('/api/v1/waitTimes/:guests', (req, res) => {
+app.get(`/api/v1/waitTimes/:guests`, (req, res) => {
   const guests = parseInt(req.params.guests);
   const results = map(waitTime => {
     waitTime.guests === guests;
   });
   if (results.length !== 0) {
     return res.status(200).send({
-      success: 'true',
+      success: `true`,
       message: `wait times for a guest count of ${guests} retrieved successfully`,
       data: results
     });
   } else {
     return res.status(404).send({
-      success: 'false',
+      success: `false`,
       message: `there are no wait times for a guest count of ${guests}`
     });
   }
@@ -75,8 +75,8 @@ app.get('/api/v1/waitTimes/:guests', (req, res) => {
 // guest list
 app.get(`/api/v1/guestList`, (req, res) => {
   res.status(200).send({
-    success: "true",
-    message: "guest list retrieved successfully",
+    success: `true`,
+    message: `guest list retrieved successfully`,
     data: guestList
   });
 });
@@ -120,23 +120,23 @@ app.get(`/api/v1/tableList`, (req, res) => {
 /* POST */
 
 // add a new entry
-app.post('/api/v1/waitTimes', (req, res) => {
+app.post(`/api/v1/waitTimes`, (req, res) => {
   if (!req.body.guests) {
     return res.status(400).send({
-      success: 'false',
-      message: 'guest count required'
+      success: `false`,
+      message: `guest count required`
     });
   }
   if (!req.body.timestamp) {
     return res.status(400).send({
-      success: 'false',
-      message: 'timestamp is required'
+      success: `false`,
+      message: `timestamp is required`
     });
   }
   if (!req.body.table) {
     return res.status(400).send({
-      success: 'false',
-      message: 'table number is required'
+      success: `false`,
+      message: `table number is required`
     });
   }
 
@@ -147,8 +147,8 @@ app.post('/api/v1/waitTimes', (req, res) => {
   };
   waitTimes.push(newEntry);
   return res.status(201).send({
-    success: 'true',
-    message: 'entry added successfully',
+    success: `true`,
+    message: `entry added successfully`,
     data: newEntry
   });
 });
@@ -157,26 +157,26 @@ app.post('/api/v1/waitTimes', (req, res) => {
 app.post(`/api/v1/guestList`, (req, res) => {
   if (!req.body.name) {
     return res.status(400).send({
-      success: "false",
-      message: "guest name is required"
+      success: `false`,
+      message: `guest name is required`
     });
   }
   if (!req.body.count) {
     return res.status(400).send({
-      success: "false",
-      message: "number of guests is required"
+      success: `false`,
+      message: `number of guests is required`
     });
   }
   if (!req.body.adults) {
     return res.status(400).send({
-      success: "false",
-      message: "number of adults is required"
+      success: `false`,
+      message: `number of adults is required`
     });
   }
   if (!req.body.children) {
     return res.status(400).send({
-      success: "false",
-      message: "number of children is required"
+      success: `false`,
+      message: `number of children is required`
     });
   }
 
@@ -188,7 +188,7 @@ app.post(`/api/v1/guestList`, (req, res) => {
   };
   guestList.push(newGuest);
   return res.status(201).send({
-    success: "true",
+    success: `true`,
     message: `added ${req.body.name} to guest list, position ${guestList.length + 1}`,
     data: newGuest
   });
@@ -199,7 +199,7 @@ app.post(`/api/v1/guestList`, (req, res) => {
 /* PUT */
 
 // update an entry
-app.put('/api/v1/waitTimes/:guests', (req, res) => {
+app.put(`/api/v1/waitTimes/:guests`, (req, res) => {
   const guests = parseInt(req.params.guests);
   const timestamp = parseInt(req.query.timestamp);
   let foundIndex = -1;
@@ -213,14 +213,14 @@ app.put('/api/v1/waitTimes/:guests', (req, res) => {
 
   if (foundIndex === -1) {
     return res.status(404).send({
-      success: 'false',
+      success: `false`,
       message: `no entry found for a guest count of ${guests} and a timestamp of ${timestamp}`
     });
   }
   if (!req.body.table) {
     return res.status(400).send({
-      success: 'false',
-      message: 'table number is required'
+      success: `false`,
+      message: `table number is required`
     });
   }
 
@@ -231,7 +231,7 @@ app.put('/api/v1/waitTimes/:guests', (req, res) => {
   };
   db.waitTimes.splice(foundIndex, 1, updatedEntry);
   res.status(201).send({
-    success: 'true',
+    success: `true`,
     messasge: `entry with a guest count of ${guests} and a timestamp of ${timestamp} updated to have table ${req.body.table}`,
     data: updatedEntry
   });
