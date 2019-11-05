@@ -82,7 +82,7 @@ app.get(`/api/v1/guestList`, (req, res) => {
 });
 
 // table list
-app.get(`/api/v1/tableList`, (req, res) => {
+app.get(`/api/v1/tables`, (req, res) => {
   const constraints = constraintsFactory(0, 0, 0, 0, 0, 1);
   const preCheckVerdict = requestPreCheck(req, constraints);
   if (preCheckVerdict !== ``) {
@@ -198,7 +198,7 @@ app.post(`/api/v1/guestList`, (req, res) => {
 
 /* PUT */
 
-// update an entry
+// update a guest entry
 app.put(`/api/v1/waitTimes/:guests`, (req, res) => {
   const guests = parseInt(req.params.guests);
   const timestamp = parseInt(req.query.timestamp);
@@ -237,6 +237,63 @@ app.put(`/api/v1/waitTimes/:guests`, (req, res) => {
   });
 });
 
+// seat guests at a table
+// bad api endpoint naming, update later lmao
+// probably need to pass in a guest later
+app.put(`/api/v1/tables/:number`, (req, res) => {
+  const constraints = constraintsFactory(0, 0, 1, 1, 0, 0);
+  const preCheckVerdict = requestPreCheck(req, constraints);
+  if (preCheckVerdict !== ``) {
+    res.status(400).send({
+      success: `false`,
+      message: preCheckVerdict
+    });
+  } else {
+    const tableNumber = req.params.number;
+
+    let foundIndex = -1;
+    for (let i = 0; i < tableList.length; i++) {
+      // TODO when I start using a proper DB
+      // ensure that tableNumber is stored as int
+      // so that I can check 1 <= tableNumber <= 66
+      // but what about ephemeral tables?
+      if (tableList[i].number === tableNumber) {
+        foundIndex = i;
+        break;
+      }
+    }
+
+    // table number not found
+    if (foundIndex === -1) {
+      return res.status(404).send({
+        success: `false`,
+        message: `table #${tableNumber} does not exist`
+      });
+    } else if (!tableList[foundIndex].vacant) {
+      // may need to update this status
+      // in fact I think all the statuses need a good roast
+      return res.statuus(400).send({
+        success: `false`,
+        message: `table #${tableNumber} is not vacant`
+      });
+    }
+
+    const originalTable = tableList[foundIndex];
+    const updatedTable = {
+      number: originalTable.number,
+      type: originalTable.type,
+      count: originalTable.count,
+      vacant: `false`
+    };
+    tableList.splice(foundIndex, 1, updatedTable);
+    res.status(201).send({
+      success: `true`,
+      message: `table #${tableNumber} has been seated and is no longer vacant`,
+      data: updatedTable
+    });
+  }
+});
+
 
 
 // helper functions
@@ -250,7 +307,7 @@ const constraintsFactory = (
       minLength: bodyMin,
       maxLength: bodyMax
     },
-    param: {
+    params: {
       minLength: paramMin,
       maxLength: paramMax
     },
@@ -266,7 +323,10 @@ const requestPreCheck = (req, constraints) => {
     if (Object.keys(req[`${key}`]).length > constraints[`${key}`].maxLength) {
       verdict += `The number of ${key} arguments exceeds the alloted amount (${constraints[`${key}`].maxLength}). `;
     } else if (Object.keys(req[`${key}`]).length < constraints[`${key}`].minLength) {
-      verdict += `The number of ${key} arguments exceeds the alloted amount (${constraints[`${key}`].minLengtht}). `;
+      console.log(key)
+      console.log(Object.keys(req[`${key}`]).length)
+      console.log(constraints[`${key}`].minLength)
+      verdict += `The number of ${key} arguments exceeds the alloted amount (${constraints[`${key}`].minLength}). `;
     }
   });
   return verdict.trimEnd();
