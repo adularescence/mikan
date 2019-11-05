@@ -320,13 +320,13 @@ const constraintsFactory = (
 const requestPreCheck = (req, constraints) => {
   let verdict = ``;
   Object.keys(constraints).forEach(key => {
-    if (Object.keys(req[`${key}`]).length > constraints[`${key}`].maxLength) {
-      verdict += `The number of ${key} arguments exceeds the alloted amount (${constraints[`${key}`].maxLength}). `;
-    } else if (Object.keys(req[`${key}`]).length < constraints[`${key}`].minLength) {
-      console.log(key)
-      console.log(Object.keys(req[`${key}`]).length)
-      console.log(constraints[`${key}`].minLength)
-      verdict += `The number of ${key} arguments exceeds the alloted amount (${constraints[`${key}`].minLength}). `;
+    const count = Object.keys(req[`${key}`]).length;
+    const max = constraints[`${key}`].maxLength;
+    const min = constraints[`${key}`].minLength;
+    if (count > max) {
+      verdict += `The number of ${key} arguments exceeds the alloted amount (${count} vs ${max}). `;
+    } else if (count < min) {
+      verdict += `The number of ${key} arguments exceeds the alloted amount (${count} vs ${min}). `;
     }
   });
   return verdict.trimEnd();
