@@ -269,16 +269,18 @@ app.put(`/api/v1/tables/:number`, (req, res) => {
         success: `false`,
         message: `table #${tableNumber} does not exist`
       });
-    } else if (!tableList[foundIndex].vacant) {
+    }
+    
+    const originalTable = tableList[foundIndex];
+    if (originalTable.vacant !== `true`) {
       // may need to update this status
       // in fact I think all the statuses need a good roast
-      return res.statuus(400).send({
+      return res.status(400).send({
         success: `false`,
         message: `table #${tableNumber} is not vacant`
       });
     }
 
-    const originalTable = tableList[foundIndex];
     const updatedTable = {
       number: originalTable.number,
       type: originalTable.type,
