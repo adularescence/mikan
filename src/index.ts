@@ -1,6 +1,6 @@
-const express = require(`express`);
-const db = require(`./db/db.js`);
-const bodyParser = require(`body-parser`);
+import bodyParser from "body-parser";
+import express from "express";
+import db from "../db/db.js";
 
 const app = express();
 const port = 5000;
@@ -13,61 +13,56 @@ const waitTimes = db.waitTimes;
 const guestList = db.guestList;
 const tableList = db.tableList;
 
-
-
 /* DELETE */
 
 // delete an entry
 app.delete(`/api/v1/waitTimes/:guests`, (req, res) => {
-  const guests = parseInt(req.params.guests);
-  const timestamp = parseInt(req.query.timestamp);
+  const guests = parseInt(req.params.guests, 10);
+  const timestamp = parseInt(req.query.timestamp, 10);
 
   for (let i = 0; i < waitTimes.length; i++) {
     if (db[i].guests === guests && db[i].timestamp === timestamp) {
       const removedEntry = waitTimes.splice(i, 1);
       return res.status(200).send({
-        success: `true`,
+        data: removedEntry,
         message: `deleted entry with a guest count of ${guests} and a timestamp of ${timestamp} successfully`,
-        data: removedEntry
+        success: `true`
       });
     }
   }
 
   return res.status(404).send({
-    success: `false`,
-    message: `no entry found for a guest count of ${guests} and a timestamp of ${timestamp}`
+    message: `no entry found for a guest count of ${guests} and a timestamp of ${timestamp}`,
+    success: `false`
   });
 });
-
-
 
 /* GET */
 
 // all
 app.get(`/api/v1/waitTimes`, (req, res) => {
   res.status(200).send({
-    success: `true`,
+    data: waitTimes,
     message: `wait times retrieved successfully`,
-    data: waitTimes
+    success: `true`
   });
 });
 
 // for n guests
 app.get(`/api/v1/waitTimes/:guests`, (req, res) => {
-  const guests = parseInt(req.params.guests);
-  const results = map(waitTime => {
-    waitTime.guests === guests;
-  });
+  const guests = parseInt(req.params.guests, 10);
+  // the code i copied was ancient so have a placeholder
+  const results = [];
   if (results.length !== 0) {
     return res.status(200).send({
-      success: `true`,
+      data: results,
       message: `wait times for a guest count of ${guests} retrieved successfully`,
-      data: results
+      success: `true`,
     });
   } else {
     return res.status(404).send({
-      success: `false`,
-      message: `there are no wait times for a guest count of ${guests}`
+      message: `there are no wait times for a guest count of ${guests}`,
+      success: `false`
     });
   }
 });
@@ -75,9 +70,9 @@ app.get(`/api/v1/waitTimes/:guests`, (req, res) => {
 // guest list
 app.get(`/api/v1/guestList`, (req, res) => {
   res.status(200).send({
-    success: `true`,
+    data: guestList,
     message: `guest list retrieved successfully`,
-    data: guestList
+    success: `true`
   });
 });
 
@@ -87,35 +82,34 @@ app.get(`/api/v1/tables`, (req, res) => {
   const preCheckVerdict = requestPreCheck(req, constraints);
   if (preCheckVerdict !== ``) {
     res.status(400).send({
-      success: `false`,
-      message: preCheckVerdict
+      message: preCheckVerdict,
+      success: `false`
     });
   } else if (req.query.vacant !== undefined) {
     const vacancyQuery = req.query.vacant;
     if (vacancyQuery !== `false` && vacancyQuery !== `true`) {
       res.status(400).send({
-        success: `false`,
-        message: `vacant must be either true or false`
+        message: `vacant must be either true or false`,
+        success: `false`
       });
     } else {
-      const vacantTables = tableList.filter(table => {
+      const vacantTables = tableList.filter((table) => {
         return table.vacant === vacancyQuery;
       });
       res.status(200).send({
-        success: `true`,
+        data: vacantTables,
         message: `tables with vacant = '${vacancyQuery}' retrieved successfully`,
-        data: vacantTables
+        success: `true`
       });
     }
   } else {
     res.status(200).send({
-      success: `true`,
+      data: tableList,
       message: `table list retrieved successfully`,
-      data: tableList
+      success: `true`
     });
   }
 });
-
 
 /* POST */
 
@@ -123,33 +117,33 @@ app.get(`/api/v1/tables`, (req, res) => {
 app.post(`/api/v1/waitTimes`, (req, res) => {
   if (!req.body.guests) {
     return res.status(400).send({
-      success: `false`,
-      message: `guest count required`
+      message: `guest count required`,
+      success: `false`
     });
   }
   if (!req.body.timestamp) {
     return res.status(400).send({
-      success: `false`,
-      message: `timestamp is required`
+      message: `timestamp is required`,
+      success: `false`
     });
   }
   if (!req.body.table) {
     return res.status(400).send({
-      success: `false`,
-      message: `table number is required`
+      message: `table number is required`,
+      success: `false`
     });
   }
 
   const newEntry = {
-    guests: parseInt(req.body.guests),
-    timestamp: req.body.timestamp,
-    table: req.body.table
+    guests: parseInt(req.body.guests, 10),
+    table: req.body.table,
+    timestamp: req.body.timestamp
   };
   waitTimes.push(newEntry);
   return res.status(201).send({
-    success: `true`,
+    data: newEntry,
     message: `entry added successfully`,
-    data: newEntry
+    success: `true`
   });
 });
 
@@ -157,51 +151,49 @@ app.post(`/api/v1/waitTimes`, (req, res) => {
 app.post(`/api/v1/guestList`, (req, res) => {
   if (!req.body.name) {
     return res.status(400).send({
-      success: `false`,
-      message: `guest name is required`
+      message: `guest name is required`,
+      success: `false`
     });
   }
   if (!req.body.count) {
     return res.status(400).send({
-      success: `false`,
-      message: `number of guests is required`
+      message: `number of guests is required`,
+      success: `false`
     });
   }
   if (!req.body.adults) {
     return res.status(400).send({
-      success: `false`,
-      message: `number of adults is required`
+      message: `number of adults is required`,
+      success: `false`
     });
   }
   if (!req.body.children) {
     return res.status(400).send({
-      success: `false`,
-      message: `number of children is required`
+      message: `number of children is required`,
+      success: `false`
     });
   }
 
   const newGuest = {
-    name: req.body.name,
-    count: req.body.count,
     adults: req.body.adults,
-    children: req.body.children
+    children: req.body.children,
+    count: req.body.count,
+    name: req.body.name
   };
   guestList.push(newGuest);
   return res.status(201).send({
-    success: `true`,
+    data: newGuest,
     message: `added ${req.body.name} to guest list, position ${guestList.length + 1}`,
-    data: newGuest
+    success: `true`
   });
 });
-
-
 
 /* PUT */
 
 // update a guest entry
 app.put(`/api/v1/waitTimes/:guests`, (req, res) => {
-  const guests = parseInt(req.params.guests);
-  const timestamp = parseInt(req.query.timestamp);
+  const guests = parseInt(req.params.guests, 10);
+  const timestamp = parseInt(req.query.timestamp, 10);
   let foundIndex = -1;
 
   for (let i = 0; i < db.length; i++) {
@@ -213,27 +205,28 @@ app.put(`/api/v1/waitTimes/:guests`, (req, res) => {
 
   if (foundIndex === -1) {
     return res.status(404).send({
-      success: `false`,
-      message: `no entry found for a guest count of ${guests} and a timestamp of ${timestamp}`
+      message: `no entry found for a guest count of ${guests} and a timestamp of ${timestamp}`,
+      success: `false`
     });
   }
   if (!req.body.table) {
     return res.status(400).send({
-      success: `false`,
-      message: `table number is required`
+      message: `table number is required`,
+      success: `false`
     });
   }
 
   const updatedEntry = {
-    guests: guests,
-    timestamp: timestamp,
-    table: parseInt(req.body.table)
+    guests,
+    table: parseInt(req.body.table, 10),
+    timestamp,
   };
   db.waitTimes.splice(foundIndex, 1, updatedEntry);
   res.status(201).send({
-    success: `true`,
-    messasge: `entry with a guest count of ${guests} and a timestamp of ${timestamp} updated to have table ${req.body.table}`,
-    data: updatedEntry
+    data: updatedEntry,
+    messasge: `entry with a guest count of ${guests} and a
+      timestamp of ${timestamp} updated to have table ${req.body.table}`,
+    success: `true`
   });
 });
 
@@ -245,8 +238,8 @@ app.put(`/api/v1/tables/:number`, (req, res) => {
   const preCheckVerdict = requestPreCheck(req, constraints);
   if (preCheckVerdict !== ``) {
     res.status(400).send({
-      success: `false`,
-      message: preCheckVerdict
+      message: preCheckVerdict,
+      success: `false`
     });
   } else {
     const tableNumber = req.params.number;
@@ -266,62 +259,60 @@ app.put(`/api/v1/tables/:number`, (req, res) => {
     // table number not found
     if (foundIndex === -1) {
       return res.status(404).send({
-        success: `false`,
-        message: `table #${tableNumber} does not exist`
+        message: `table #${tableNumber} does not exist`,
+        success: `false`
       });
     }
-    
+
     const originalTable = tableList[foundIndex];
     if (originalTable.vacant !== `true`) {
       // may need to update this status
       // in fact I think all the statuses need a good roast
       return res.status(400).send({
-        success: `false`,
-        message: `table #${tableNumber} is not vacant`
+        message: `table #${tableNumber} is not vacant`,
+        success: `false`
       });
     }
 
     const updatedTable = {
+      count: originalTable.count,
       number: originalTable.number,
       type: originalTable.type,
-      count: originalTable.count,
       vacant: `false`
     };
     tableList.splice(foundIndex, 1, updatedTable);
     res.status(201).send({
-      success: `true`,
+      data: updatedTable,
       message: `table #${tableNumber} has been seated and is no longer vacant`,
-      data: updatedTable
+      success: `true`
     });
   }
 });
 
-
-
 // helper functions
 const constraintsFactory = (
-  bodyMin, bodyMax,
-  paramMin, paramMax,
-  queryMin, queryMax
+  bodyMin: number, bodyMax: number,
+  paramMin: number, paramMax: number,
+  queryMin: number, queryMax: number
 ) => {
   return {
     body: {
-      minLength: bodyMin,
-      maxLength: bodyMax
+      maxLength: bodyMax,
+      minLength: bodyMin
     },
     params: {
-      minLength: paramMin,
-      maxLength: paramMax
+      maxLength: paramMax,
+      minLength: paramMin
     },
     query: {
-      minLength: queryMin,
-      maxLength: queryMax
+      maxLength: queryMax,
+      minLength: queryMin
     }
   };
 };
 const requestPreCheck = (req, constraints) => {
   let verdict = ``;
-  Object.keys(constraints).forEach(key => {
+  Object.keys(constraints).forEach((key) => {
     const count = Object.keys(req[`${key}`]).length;
     const max = constraints[`${key}`].maxLength;
     const min = constraints[`${key}`].minLength;
@@ -331,10 +322,10 @@ const requestPreCheck = (req, constraints) => {
       verdict += `The number of ${key} arguments exceeds the alloted amount (${count} vs ${min}). `;
     }
   });
-  return verdict.trimEnd();
+  return verdict.trim();
 };
 
-
 app.listen(port, () => {
+  // tslint:disable-next-line:no-console
   console.log(`server running on port ${port}`);
 });
