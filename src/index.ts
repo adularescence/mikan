@@ -10,14 +10,15 @@ const port = 5000;
 const pgClient = new Postgres.Client(auth.pg);
 pgClient.connect();
 
-const tableList: Array<{
-  count: number,
-  number: number,
-  type: string,
-  vacant: boolean
-}> = [];
+declare interface Table {
+  count: number;
+  number: number;
+  type: string;
+  vacant: boolean;
+}
+const tableList: Table[] = [];
 pgClient.query("SELECT * FROM tables").then((res) => {
-  res.rows.forEach((row) => {
+  res.rows.forEach((row: Table) => {
     tableList.push({
       count: row.count,
       number: row.number,
@@ -25,7 +26,7 @@ pgClient.query("SELECT * FROM tables").then((res) => {
       vacant: row.vacant
     });
   });
-}).catch((e) => {
+}).catch((e: Error) => {
   // tslint:disable-next-line:no-console
   console.log(e.stack);
 });

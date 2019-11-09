@@ -43,9 +43,9 @@ const requestPreCheck = (req: Request<ParamsDictionary>, constraints: RequestCon
     const max = constraints[`${key}`].maxLength;
     const min = constraints[`${key}`].minLength;
     if (count > max) {
-      verdict.push(`The number of ${key} arguments exceeds the alloted amount (${count} vs ${max}). `);
+      verdict.push(`The number of ${key} arguments exceeds the alloted amount (${count} vs ${max}).`);
     } else if (count < min) {
-      verdict.push(`The number of ${key} arguments exceeds the alloted amount (${count} vs ${min}). `);
+      verdict.push(`The number of ${key} arguments exceeds the alloted amount (${count} vs ${min}).`);
     }
   });
   return verdict.join(" ");
