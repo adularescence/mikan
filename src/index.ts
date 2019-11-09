@@ -2,6 +2,7 @@ import bodyParser from "body-parser";
 import express from "express";
 import Postgres from "pg";
 import auth = require("./auth.json");
+import requestValidator from "./requestValidator";
 
 const app = express();
 const port = 5000;
@@ -98,8 +99,8 @@ app.use(bodyParser.urlencoded({ extended: false }));
 
 // table list
 app.get(`/api/v1/tables`, (req, res) => {
-  const constraints = constraintsFactory(0, 0, 0, 0, 0, 1);
-  const preCheckVerdict = requestPreCheck(req, constraints);
+  const constraints = requestValidator.constraintsFactory(0, 0, 0, 0, 0, 1);
+  const preCheckVerdict = requestValidator.requestPreCheck(req, constraints);
   if (preCheckVerdict !== ``) {
     res.status(400).send({
       message: preCheckVerdict,
@@ -254,8 +255,8 @@ app.get(`/api/v1/tables`, (req, res) => {
 // bad api endpoint naming, update later lmao
 // probably need to pass in a guest later
 app.put(`/api/v1/tables/:number`, (req, res) => {
-  const constraints = constraintsFactory(0, 0, 1, 1, 0, 0);
-  const preCheckVerdict = requestPreCheck(req, constraints);
+  const constraints = requestValidator.constraintsFactory(0, 0, 1, 1, 0, 0);
+  const preCheckVerdict = requestValidator.requestPreCheck(req, constraints);
   if (preCheckVerdict !== ``) {
     res.status(400).send({
       message: preCheckVerdict,
@@ -305,42 +306,6 @@ app.put(`/api/v1/tables/:number`, (req, res) => {
     });
   }
 });
-
-// helper functions
-const constraintsFactory = (
-  bodyMin: number, bodyMax: number,
-  paramMin: number, paramMax: number,
-  queryMin: number, queryMax: number
-) => {
-  return {
-    body: {
-      maxLength: bodyMax,
-      minLength: bodyMin
-    },
-    params: {
-      maxLength: paramMax,
-      minLength: paramMin
-    },
-    query: {
-      maxLength: queryMax,
-      minLength: queryMin
-    }
-  };
-};
-const requestPreCheck = (req, constraints) => {
-  let verdict = ``;
-  Object.keys(constraints).forEach((key) => {
-    const count = Object.keys(req[`${key}`]).length;
-    const max = constraints[`${key}`].maxLength;
-    const min = constraints[`${key}`].minLength;
-    if (count > max) {
-      verdict += `The number of ${key} arguments exceeds the alloted amount (${count} vs ${max}). `;
-    } else if (count < min) {
-      verdict += `The number of ${key} arguments exceeds the alloted amount (${count} vs ${min}). `;
-    }
-  });
-  return verdict.trim();
-};
 
 app.listen(port, () => {
   // tslint:disable-next-line:no-console
