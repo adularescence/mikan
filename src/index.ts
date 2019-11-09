@@ -1,80 +1,100 @@
 import bodyParser from "body-parser";
 import express from "express";
-import db from "../db/db.js";
+import Postgres from "pg";
+import auth = require("./auth.json");
 
 const app = express();
 const port = 5000;
+
+const pgClient = new Postgres.Client(auth.pg);
+pgClient.connect();
+
+const tableList: Array<{
+  count: number,
+  number: number,
+  type: string,
+  vacant: boolean
+}> = [];
+pgClient.query("SELECT * FROM tables").then((res) => {
+  res.rows.forEach((row) => {
+    tableList.push({
+      count: row.count,
+      number: row.number,
+      type: row.type,
+      vacant: row.vacant
+    });
+  });
+}).catch((e) => {
+  // tslint:disable-next-line:no-console
+  console.log(e.stack);
+});
 
 // Parse incoming requests data
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
-const waitTimes = db.waitTimes;
-const guestList = db.guestList;
-const tableList = db.tableList;
-
 /* DELETE */
 
 // delete an entry
-app.delete(`/api/v1/waitTimes/:guests`, (req, res) => {
-  const guests = parseInt(req.params.guests, 10);
-  const timestamp = parseInt(req.query.timestamp, 10);
+// app.delete(`/api/v1/waitTimes/:guests`, (req, res) => {
+//   const guests = parseInt(req.params.guests, 10);
+//   const timestamp = parseInt(req.query.timestamp, 10);
 
-  for (let i = 0; i < waitTimes.length; i++) {
-    if (db[i].guests === guests && db[i].timestamp === timestamp) {
-      const removedEntry = waitTimes.splice(i, 1);
-      return res.status(200).send({
-        data: removedEntry,
-        message: `deleted entry with a guest count of ${guests} and a timestamp of ${timestamp} successfully`,
-        success: `true`
-      });
-    }
-  }
+//   for (let i = 0; i < waitTimes.length; i++) {
+//     if (db[i].guests === guests && db[i].timestamp === timestamp) {
+//       const removedEntry = waitTimes.splice(i, 1);
+//       return res.status(200).send({
+//         data: removedEntry,
+//         message: `deleted entry with a guest count of ${guests} and a timestamp of ${timestamp} successfully`,
+//         success: `true`
+//       });
+//     }
+//   }
 
-  return res.status(404).send({
-    message: `no entry found for a guest count of ${guests} and a timestamp of ${timestamp}`,
-    success: `false`
-  });
-});
+//   return res.status(404).send({
+//     message: `no entry found for a guest count of ${guests} and a timestamp of ${timestamp}`,
+//     success: `false`
+//   });
+// });
 
 /* GET */
 
 // all
-app.get(`/api/v1/waitTimes`, (req, res) => {
-  res.status(200).send({
-    data: waitTimes,
-    message: `wait times retrieved successfully`,
-    success: `true`
-  });
-});
+// app.get(`/api/v1/waitTimes`, (req, res) => {
+//   res.status(200).send({
+//     data: waitTimes,
+//     message: `wait times retrieved successfully`,
+//     success: `true`
+//   });
+// });
 
 // for n guests
-app.get(`/api/v1/waitTimes/:guests`, (req, res) => {
-  const guests = parseInt(req.params.guests, 10);
-  // the code i copied was ancient so have a placeholder
-  const results = [];
-  if (results.length !== 0) {
-    return res.status(200).send({
-      data: results,
-      message: `wait times for a guest count of ${guests} retrieved successfully`,
-      success: `true`,
-    });
-  } else {
-    return res.status(404).send({
-      message: `there are no wait times for a guest count of ${guests}`,
-      success: `false`
-    });
-  }
-});
+// app.get(`/api/v1/waitTimes/:guests`, (req, res) => {
+//   const guests = parseInt(req.params.guests, 10);
+//   // the code i copied was ancient so have a placeholder
+//   const results = [];
+//   if (results.length !== 0) {
+//     return res.status(200).send({
+//       data: results,
+//       message: `wait times for a guest count of ${guests} retrieved successfully`,
+//       success: `true`,
+//     });
+//   } else {
+//     return res.status(404).send({
+//       message: `there are no wait times for a guest count of ${guests}`,
+//       success: `false`
+//     });
+//   }
+// });
 
 // guest list
-app.get(`/api/v1/guestList`, (req, res) => {
-  res.status(200).send({
-    data: guestList,
-    message: `guest list retrieved successfully`,
-    success: `true`
-  });
-});
+// app.get(`/api/v1/guestList`, (req, res) => {
+//   res.status(200).send({
+//     data: guestList,
+//     message: `guest list retrieved successfully`,
+//     success: `true`
+//   });
+// });
 
 // table list
 app.get(`/api/v1/tables`, (req, res) => {
@@ -114,121 +134,121 @@ app.get(`/api/v1/tables`, (req, res) => {
 /* POST */
 
 // add a new entry
-app.post(`/api/v1/waitTimes`, (req, res) => {
-  if (!req.body.guests) {
-    return res.status(400).send({
-      message: `guest count required`,
-      success: `false`
-    });
-  }
-  if (!req.body.timestamp) {
-    return res.status(400).send({
-      message: `timestamp is required`,
-      success: `false`
-    });
-  }
-  if (!req.body.table) {
-    return res.status(400).send({
-      message: `table number is required`,
-      success: `false`
-    });
-  }
+// app.post(`/api/v1/waitTimes`, (req, res) => {
+//   if (!req.body.guests) {
+//     return res.status(400).send({
+//       message: `guest count required`,
+//       success: `false`
+//     });
+//   }
+//   if (!req.body.timestamp) {
+//     return res.status(400).send({
+//       message: `timestamp is required`,
+//       success: `false`
+//     });
+//   }
+//   if (!req.body.table) {
+//     return res.status(400).send({
+//       message: `table number is required`,
+//       success: `false`
+//     });
+//   }
 
-  const newEntry = {
-    guests: parseInt(req.body.guests, 10),
-    table: req.body.table,
-    timestamp: req.body.timestamp
-  };
-  waitTimes.push(newEntry);
-  return res.status(201).send({
-    data: newEntry,
-    message: `entry added successfully`,
-    success: `true`
-  });
-});
+//   const newEntry = {
+//     guests: parseInt(req.body.guests, 10),
+//     table: req.body.table,
+//     timestamp: req.body.timestamp
+//   };
+//   waitTimes.push(newEntry);
+//   return res.status(201).send({
+//     data: newEntry,
+//     message: `entry added successfully`,
+//     success: `true`
+//   });
+// });
 
 // add to guest list
-app.post(`/api/v1/guestList`, (req, res) => {
-  if (!req.body.name) {
-    return res.status(400).send({
-      message: `guest name is required`,
-      success: `false`
-    });
-  }
-  if (!req.body.count) {
-    return res.status(400).send({
-      message: `number of guests is required`,
-      success: `false`
-    });
-  }
-  if (!req.body.adults) {
-    return res.status(400).send({
-      message: `number of adults is required`,
-      success: `false`
-    });
-  }
-  if (!req.body.children) {
-    return res.status(400).send({
-      message: `number of children is required`,
-      success: `false`
-    });
-  }
+// app.post(`/api/v1/guestList`, (req, res) => {
+//   if (!req.body.name) {
+//     return res.status(400).send({
+//       message: `guest name is required`,
+//       success: `false`
+//     });
+//   }
+//   if (!req.body.count) {
+//     return res.status(400).send({
+//       message: `number of guests is required`,
+//       success: `false`
+//     });
+//   }
+//   if (!req.body.adults) {
+//     return res.status(400).send({
+//       message: `number of adults is required`,
+//       success: `false`
+//     });
+//   }
+//   if (!req.body.children) {
+//     return res.status(400).send({
+//       message: `number of children is required`,
+//       success: `false`
+//     });
+//   }
 
-  const newGuest = {
-    adults: req.body.adults,
-    children: req.body.children,
-    count: req.body.count,
-    name: req.body.name
-  };
-  guestList.push(newGuest);
-  return res.status(201).send({
-    data: newGuest,
-    message: `added ${req.body.name} to guest list, position ${guestList.length + 1}`,
-    success: `true`
-  });
-});
+//   const newGuest = {
+//     adults: req.body.adults,
+//     children: req.body.children,
+//     count: req.body.count,
+//     name: req.body.name
+//   };
+//   guestList.push(newGuest);
+//   return res.status(201).send({
+//     data: newGuest,
+//     message: `added ${req.body.name} to guest list, position ${guestList.length + 1}`,
+//     success: `true`
+//   });
+// });
 
 /* PUT */
 
 // update a guest entry
-app.put(`/api/v1/waitTimes/:guests`, (req, res) => {
-  const guests = parseInt(req.params.guests, 10);
-  const timestamp = parseInt(req.query.timestamp, 10);
-  let foundIndex = -1;
+// app.put(`/api/v1/waitTimes/:guests`, (req, res) => {
+//   const guests = parseInt(req.params.guests, 10);
+//   const timestamp = parseInt(req.query.timestamp, 10);
+//   let foundIndex = -1;
 
-  for (let i = 0; i < db.length; i++) {
-    if (db[i].guests === guests && db[i].timestamp === timestamp) {
-      foundIndex = i;
-      break;
-    }
-  }
+//   for (let i = 0; i < db.length; i++) {
+//     if (db[i].guests === guests && db[i].timestamp === timestamp) {
+//       foundIndex = i;
+//       break;
+//     }
+//   }
 
-  if (foundIndex === -1) {
-    return res.status(404).send({
-      message: `no entry found for a guest count of ${guests} and a timestamp of ${timestamp}`,
-      success: `false`
-    });
-  }
-  if (!req.body.table) {
-    return res.status(400).send({
-      message: `table number is required`,
-      success: `false`
-    });
-  }
+//   if (foundIndex === -1) {
+//     return res.status(404).send({
+//       message: `no entry found for a guest count of ${guests} and a timestamp of ${timestamp}`,
+//       success: `false`
+//     });
+//   }
+//   if (!req.body.table) {
+//     return res.status(400).send({
+//       message: `table number is required`,
+//       success: `false`
+//     });
+//   }
 
-  const updatedEntry = {
-    guests,
-    table: parseInt(req.body.table, 10),
-    timestamp,
-  };
-  db.waitTimes.splice(foundIndex, 1, updatedEntry);
-  res.status(201).send({
-    data: updatedEntry,
-    messasge: `entry with a guest count of ${guests} and a
-      timestamp of ${timestamp} updated to have table ${req.body.table}`,
-    success: `true`
-  });
-});
+//   const updatedEntry = {
+//     guests,
+//     table: parseInt(req.body.table, 10),
+//     timestamp,
+//   };
+//   db.waitTimes.splice(foundIndex, 1, updatedEntry);
+//   res.status(201).send({
+//     data: updatedEntry,
+//     messasge: `entry with a guest count of ${guests} and a
+//       timestamp of ${timestamp} updated to have table ${req.body.table}`,
+//     success: `true`
+//   });
+// });
 
 // seat guests at a table
 // bad api endpoint naming, update later lmao
@@ -242,13 +262,10 @@ app.put(`/api/v1/tables/:number`, (req, res) => {
       success: `false`
     });
   } else {
-    const tableNumber = req.params.number;
+    const tableNumber = parseInt(req.params.number, 10);
 
     let foundIndex = -1;
     for (let i = 0; i < tableList.length; i++) {
-      // TODO when I start using a proper DB
-      // ensure that tableNumber is stored as int
-      // so that I can check 1 <= tableNumber <= 66
       // but what about ephemeral tables?
       if (tableList[i].number === tableNumber) {
         foundIndex = i;
@@ -265,7 +282,7 @@ app.put(`/api/v1/tables/:number`, (req, res) => {
     }
 
     const originalTable = tableList[foundIndex];
-    if (originalTable.vacant !== `true`) {
+    if (originalTable.vacant !== true) {
       // may need to update this status
       // in fact I think all the statuses need a good roast
       return res.status(400).send({
@@ -278,7 +295,7 @@ app.put(`/api/v1/tables/:number`, (req, res) => {
       count: originalTable.count,
       number: originalTable.number,
       type: originalTable.type,
-      vacant: `false`
+      vacant: false
     };
     tableList.splice(foundIndex, 1, updatedTable);
     res.status(201).send({
