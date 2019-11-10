@@ -22,6 +22,10 @@ declare interface Table {
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
+/* DELETE */
+
+// nothing here yet
+
 /* GET */
 
 // table list
@@ -89,10 +93,36 @@ app.get(`/api/v1/tables`, (req, res) => {
   });
 });
 
+// guest list
+app.get(`/api/v1/guests`, (req, res) => {
+  // const constraints = requestValidator.constraintsFactory(0, 0, 0, 0, 0, 0);
+  // const preCheckVerdict = requestValidator.requestPreCheck(req, constraints);
+
+  // // if bad body/params/query arguments
+  // if (preCheckVerdict !== ``) {
+  //   return res.status(400).send({
+  //     message: preCheckVerdict,
+  //     success: false
+  //   });
+  // }
+
+  pgClient.query(`SELECT * FROM guests`).then((dbRes) => {
+    return res.status(200).send({
+      data: dbRes.rows,
+      message: `guest list retrieved successfully`,
+      success: true
+    });
+  }).catch((e: Error) => {
+    return res.status(400).send({
+      message: e.stack,
+      success: false
+    });
+  });
+});
+
 /* POST */
 
 // add guest
-
 app.post(`/api/v1/newGuest`, (req, res) => {
   const constraints = requestValidator.constraintsFactory(3, 3, 0, 0, 0, 0);
   const preCheckVerdict = requestValidator.requestPreCheck(req, constraints);
@@ -124,6 +154,11 @@ app.post(`/api/v1/newGuest`, (req, res) => {
       data: newGuest,
       message: `Guest with name ${newGuest.name}, entered at ${newGuest.entered} (epoch ${Date.parse(newGuest.entered)}), and with ${newGuest.adults} adults and ${newGuest.children} children added to the guest list`,
       success: true
+    });
+  }).catch((e: Error) => {
+    res.status(400).send({
+      message: e.stack,
+      success: false
     });
   });
 });
@@ -180,8 +215,18 @@ app.put(`/api/v1/tables/:number`, (req, res) => {
         success: false
       });
     });
+  }).catch((e: Error) => {
+    res.status(400).send({
+      message: e.stack,
+      success: false
+    });
   });
 });
+
+// update guest timestamp
+// app.put(`/api/v1/guests`, (req, res) => {
+
+// });
 
 app.listen(port, () => {
   // tslint:disable-next-line:no-console
