@@ -98,9 +98,19 @@ app.get(`/api/v1/tables`, (req, res) => {
     });
   }
 
-  // if bad "vacant" query argument
   const vacancyQuery = req.query.vacant;
-  if (vacancyQuery !== undefined && (vacancyQuery !== `false` && vacancyQuery !== `true`)) {
+
+  // if missing "vacant" query argument
+  if (vacancyQuery === undefined) {
+    const keyval = Object.entries(req.query)[0];
+    return res.status(400).send({
+      message: `Missing 'vacant' query argument. The request's query argument is ${keyval[0]}=${keyval[1]}`,
+      success: false
+    });
+  }
+
+  // if bad "vacant" query argument
+  if (vacancyQuery !== `false` && vacancyQuery !== `true`) {
     return res.status(400).send({
       message: `vacant must be either 'true' or 'false' (case-sensitive)`,
       success: false
