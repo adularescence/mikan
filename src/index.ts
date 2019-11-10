@@ -41,10 +41,8 @@ app.get(`/api/v1/tables`, (req, res) => {
     });
   }
 
-  const vacancyQuery = req.query.vacant;
-
-  // if missing "vacant" query argument
-  if (vacancyQuery === undefined) {
+  // ensure that the query argument isn't anything but "vacant"
+  if (req.query.length !== 0 && req.query.vacant === undefined) {
     const keyval = Object.entries(req.query)[0];
     return res.status(400).send({
       message: `Missing 'vacant' query argument. The request's query argument is ${keyval[0]}=${keyval[1]}`,
@@ -52,34 +50,20 @@ app.get(`/api/v1/tables`, (req, res) => {
     });
   }
 
-  // if bad "vacant" query argument
-  if (vacancyQuery !== `false` && vacancyQuery !== `true`) {
-    return res.status(400).send({
-      message: `vacant must be either 'true' or 'false' (case-sensitive)`,
-      success: false
-    });
-  }
-
-  // it's safe to query the database now
-
-  // if request wants tables that are (not) vacant
-  if (vacancyQuery !== undefined && (vacancyQuery === `false` || vacancyQuery === `true`)) {
-    return pgClient.query(`SELECT * FROM tables WHERE vacant = ${vacancyQuery}`).then ((dbRes) => {
-      res.status(200).send({
-        data: dbRes.rows,
-        message: `tables with vacant = '${vacancyQuery}' retrieved successfully`,
-        success: `true`
-      });
-    }).catch((e: Error) => {
+  // ensure that the "vacant" query argument is either 'true' or 'false', if it exists
+  let queryText = `SELECT * FROM tables`;
+  if (req.query.vacant !== undefined) {
+    if (req.query.vacant !== `false` && req.query.vacant !== `true`) {
       return res.status(400).send({
-        message: e.stack,
+        message: `vacant must be either 'true' or 'false' (case-sensitive)`,
         success: false
       });
-    });
+    } else {
+      queryText = queryText.concat(` WHERE vacant = ${req.query.vacant === `true`}`);
+    }
   }
 
-  // just send the table list
-  pgClient.query(`SELECT * FROM tables`).then((dbRes) => {
+  pgClient.query(queryText).then((dbRes) => {
     return res.status(200).send({
       data: dbRes.rows,
       message: `tables retrieved successfully`,
@@ -94,19 +78,60 @@ app.get(`/api/v1/tables`, (req, res) => {
 });
 
 // guest list
+// seated, count
 app.get(`/api/v1/guests`, (req, res) => {
-  // const constraints = requestValidator.constraintsFactory(0, 0, 0, 0, 0, 0);
-  // const preCheckVerdict = requestValidator.requestPreCheck(req, constraints);
+  const constraints = requestValidator.constraintsFactory(0, 0, 0, 0, 0, 2);
+  const preCheckVerdict = requestValidator.requestPreCheck(req, constraints);
 
-  // // if bad body/params/query arguments
-  // if (preCheckVerdict !== ``) {
-  //   return res.status(400).send({
-  //     message: preCheckVerdict,
-  //     success: false
-  //   });
-  // }
+  // if bad body/params/query arguments
+  if (preCheckVerdict !== ``) {
+    return res.status(400).send({
+      message: preCheckVerdict,
+      success: false
+    });
+  }
 
-  pgClient.query(`SELECT * FROM guests`).then((dbRes) => {
+  let queryText = `SELECT * FROM guests`;
+
+  // ensure validity of query arguments
+  if (Object.entries(req.query).length !== 0) {
+    const badQueryArguments = [];
+    Object.entries(req.query).forEach((keyval) => {
+      switch (keyval[0]) {
+        case `count`:
+          if (isNaN(parseInt(req.query.count, 10))) {
+            badQueryArguments.push(`${keyval[0]}=${keyval[1]}`);
+          }
+          break;
+        case `seated`:
+          if (keyval[1] !== `true` && keyval[1] !== `false`) {
+            badQueryArguments.push(`${keyval[0]}=${keyval[1]}`);
+          }
+          break;
+        default:
+          badQueryArguments.push(`${keyval[0]}=${keyval[1]}`);
+      }
+    });
+    if (badQueryArguments.length !== 0) {
+      return res.status(400).send({
+        message: `bad query arguments: ${badQueryArguments.join(" ")}`,
+        success: false
+      });
+    } else {
+      queryText = `${queryText} WHERE`;
+    }
+  }
+
+  const queryHelper = [];
+  if (req.query.count !== undefined) {
+    queryHelper.push(`(children + adults) = ${parseInt(req.query.count, 10)}`);
+  }
+  if (req.query.seated !== undefined) {
+    queryHelper.push(`seated IS ${req.query.seated === `true` ? `NOT NULL` : `NULL`}`);
+  }
+
+  queryText = `${queryText} ${queryHelper.join(` AND `)}`;
+  pgClient.query(queryText).then((dbRes) => {
     return res.status(200).send({
       data: dbRes.rows,
       message: `guest list retrieved successfully`,
@@ -115,6 +140,7 @@ app.get(`/api/v1/guests`, (req, res) => {
   }).catch((e: Error) => {
     return res.status(400).send({
       message: e.stack,
+      query: queryText,
       success: false
     });
   });
