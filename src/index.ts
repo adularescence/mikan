@@ -1,3 +1,4 @@
+import { pg } from "auth.json";
 import bodyParser from "body-parser";
 import express from "express";
 import Postgres from "pg";
@@ -16,20 +17,6 @@ declare interface Table {
   type: string;
   vacant: boolean;
 }
-const tableList: Table[] = [];
-pgClient.query("SELECT * FROM tables").then((res) => {
-  res.rows.forEach((row: Table) => {
-    tableList.push({
-      count: row.count,
-      number: row.number,
-      type: row.type,
-      vacant: row.vacant
-    });
-  });
-}).catch((e: Error) => {
-  // tslint:disable-next-line:no-console
-  console.log(e.stack);
-});
 
 // Parse incoming requests data
 app.use(bodyParser.json());
@@ -55,7 +42,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 
 //   return res.status(404).send({
 //     message: `no entry found for a guest count of ${guests} and a timestamp of ${timestamp}`,
-//     success: `false`
+//     success: false
 //   });
 // });
 
@@ -84,7 +71,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 //   } else {
 //     return res.status(404).send({
 //       message: `there are no wait times for a guest count of ${guests}`,
-//       success: `false`
+//       success: false
 //     });
 //   }
 // });
@@ -102,35 +89,55 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.get(`/api/v1/tables`, (req, res) => {
   const constraints = requestValidator.constraintsFactory(0, 0, 0, 0, 0, 1);
   const preCheckVerdict = requestValidator.requestPreCheck(req, constraints);
+
+  // if bad body/params/query arguments
   if (preCheckVerdict !== ``) {
-    res.status(400).send({
+    return res.status(400).send({
       message: preCheckVerdict,
-      success: `false`
+      success: false
     });
-  } else if (req.query.vacant !== undefined) {
-    const vacancyQuery = req.query.vacant;
-    if (vacancyQuery !== `false` && vacancyQuery !== `true`) {
-      res.status(400).send({
-        message: `vacant must be either true or false`,
-        success: `false`
-      });
-    } else {
-      const vacantTables = tableList.filter((table) => {
-        return table.vacant === vacancyQuery;
-      });
+  }
+
+  // if bad "vacant" query argument
+  const vacancyQuery = req.query.vacant;
+  if (vacancyQuery !== undefined && (vacancyQuery !== `false` && vacancyQuery !== `true`)) {
+    return res.status(400).send({
+      message: `vacant must be either 'true' or 'false' (case-sensitive)`,
+      success: false
+    });
+  }
+
+  // it's safe to query the database now
+
+  // if request wants tables that are (not) vacant
+  if (vacancyQuery !== undefined && (vacancyQuery === `false` || vacancyQuery === `true`)) {
+    return pgClient.query(`SELECT * FROM tables WHERE vacant = ${vacancyQuery}`).then ((dbRes) => {
       res.status(200).send({
-        data: vacantTables,
+        data: dbRes.rows,
         message: `tables with vacant = '${vacancyQuery}' retrieved successfully`,
         success: `true`
       });
-    }
-  } else {
-    res.status(200).send({
-      data: tableList,
-      message: `table list retrieved successfully`,
-      success: `true`
+    }).catch((e: Error) => {
+      return res.status(400).send({
+        message: e.stack,
+        success: false
+      });
     });
   }
+
+  // just send the table list
+  pgClient.query(`SELECT * FROM tables`).then((dbRes) => {
+    return res.status(200).send({
+      data: dbRes.rows,
+      message: `tables retrieved successfully`,
+      success: `true`
+    });
+  }).catch((e: Error) => {
+    return res.status(400).send({
+      message: e.stack,
+      success: false
+    });
+  });
 });
 
 /* POST */
@@ -140,19 +147,19 @@ app.get(`/api/v1/tables`, (req, res) => {
 //   if (!req.body.guests) {
 //     return res.status(400).send({
 //       message: `guest count required`,
-//       success: `false`
+//       success: false
 //     });
 //   }
 //   if (!req.body.timestamp) {
 //     return res.status(400).send({
 //       message: `timestamp is required`,
-//       success: `false`
+//       success: false
 //     });
 //   }
 //   if (!req.body.table) {
 //     return res.status(400).send({
 //       message: `table number is required`,
-//       success: `false`
+//       success: false
 //     });
 //   }
 
@@ -174,25 +181,25 @@ app.get(`/api/v1/tables`, (req, res) => {
 //   if (!req.body.name) {
 //     return res.status(400).send({
 //       message: `guest name is required`,
-//       success: `false`
+//       success: false
 //     });
 //   }
 //   if (!req.body.count) {
 //     return res.status(400).send({
 //       message: `number of guests is required`,
-//       success: `false`
+//       success: false
 //     });
 //   }
 //   if (!req.body.adults) {
 //     return res.status(400).send({
 //       message: `number of adults is required`,
-//       success: `false`
+//       success: false
 //     });
 //   }
 //   if (!req.body.children) {
 //     return res.status(400).send({
 //       message: `number of children is required`,
-//       success: `false`
+//       success: false
 //     });
 //   }
 
@@ -228,13 +235,13 @@ app.get(`/api/v1/tables`, (req, res) => {
 //   if (foundIndex === -1) {
 //     return res.status(404).send({
 //       message: `no entry found for a guest count of ${guests} and a timestamp of ${timestamp}`,
-//       success: `false`
+//       success: false
 //     });
 //   }
 //   if (!req.body.table) {
 //     return res.status(400).send({
 //       message: `table number is required`,
-//       success: `false`
+//       success: false
 //     });
 //   }
 
@@ -259,53 +266,52 @@ app.put(`/api/v1/tables/:number`, (req, res) => {
   const constraints = requestValidator.constraintsFactory(0, 0, 1, 1, 0, 0);
   const preCheckVerdict = requestValidator.requestPreCheck(req, constraints);
   if (preCheckVerdict !== ``) {
-    res.status(400).send({
+    return res.status(400).send({
       message: preCheckVerdict,
-      success: `false`
-    });
-  } else {
-    const tableNumber = parseInt(req.params.number, 10);
-
-    let foundIndex = -1;
-    for (let i = 0; i < tableList.length; i++) {
-      // but what about ephemeral tables?
-      if (tableList[i].number === tableNumber) {
-        foundIndex = i;
-        break;
-      }
-    }
-
-    // table number not found
-    if (foundIndex === -1) {
-      return res.status(404).send({
-        message: `table #${tableNumber} does not exist`,
-        success: `false`
-      });
-    }
-
-    const originalTable = tableList[foundIndex];
-    if (originalTable.vacant !== true) {
-      // may need to update this status
-      // in fact I think all the statuses need a good roast
-      return res.status(400).send({
-        message: `table #${tableNumber} is not vacant`,
-        success: `false`
-      });
-    }
-
-    const updatedTable = {
-      count: originalTable.count,
-      number: originalTable.number,
-      type: originalTable.type,
-      vacant: false
-    };
-    tableList.splice(foundIndex, 1, updatedTable);
-    res.status(201).send({
-      data: updatedTable,
-      message: `table #${tableNumber} has been seated and is no longer vacant`,
-      success: `true`
+      success: false
     });
   }
+
+  // ensure table number is a number
+  const tableNumber = parseInt(req.params.number, 10);
+  if (isNaN(tableNumber)) {
+    return res.status(400).send({
+      message: `${req.params.number} is ${tableNumber}`,
+      succes: false
+    });
+  }
+
+  pgClient.query(`SELECT vacant FROM tables WHERE number = ${tableNumber}`).then((dbRes) => {
+    // table number not found
+    if (dbRes.rows.length === 0) {
+      return res.status(400).send({
+        message: `table #${tableNumber} does not exist`,
+        success: false
+      });
+    }
+
+    // table is not vacant
+    if (dbRes.rows[0].vacant === false) {
+      return res.status(400).send({
+        message: `table #${tableNumber} is not vacant`,
+        success: false
+      });
+    }
+
+    // table number exists and is vacant, so update
+    pgClient.query(`UPDATE tables SET vacant = false WHERE number = ${tableNumber} RETURNING *`).then((dbUpdateRes) => {
+      return res.status(201).send({
+        data: dbUpdateRes.rows[0],
+        message: `table #${tableNumber} has been seated and is no longer vacant`,
+        success: true
+      });
+    }).catch((e: Error) => {
+      return res.status(400).send({
+        message: e.stack,
+        success: false
+      });
+    });
+  });
 });
 
 app.listen(port, () => {
