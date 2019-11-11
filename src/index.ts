@@ -29,6 +29,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 /* GET */
 
 // table list
+// ?vacant=(true,false)
 app.get(`/api/v1/tables`, (req, res) => {
   const constraints = requestValidator.constraintsFactory(0, 0, 0, 0, 0, 1);
   const preCheckVerdict = requestValidator.requestPreCheck(req, constraints);
@@ -41,28 +42,38 @@ app.get(`/api/v1/tables`, (req, res) => {
     });
   }
 
-  // ensure that the query argument isn't anything but "vacant"
-  if (req.query.length !== 0 && req.query.vacant === undefined) {
-    const keyval = Object.entries(req.query)[0];
-    return res.status(400).send({
-      message: `Missing 'vacant' query argument. The request's query argument is ${keyval[0]}=${keyval[1]}`,
-      success: false
-    });
-  }
-
-  // ensure that the "vacant" query argument is either 'true' or 'false', if it exists
+  // ensure validity of query arguments
   let queryText = `SELECT * FROM tables`;
-  if (req.query.vacant !== undefined) {
-    if (req.query.vacant !== `false` && req.query.vacant !== `true`) {
+  const queryArguments = Object.entries(req.query);
+  if (queryArguments.length !== 0) {
+    const badQueryArguments = [];
+    queryArguments.forEach((keyval) => {
+      switch (keyval[0]) {
+        case `vacant`:
+          if (keyval[1] !== `true` && keyval[1] !== `false`) {
+            badQueryArguments.push(`${keyval[0]}=${keyval[1]}`);
+          }
+          break;
+        default:
+          badQueryArguments.push(`${keyval[0]}=${keyval[1]}`);
+      }
+    });
+    if (badQueryArguments.length !== 0) {
       return res.status(400).send({
-        message: `vacant must be either 'true' or 'false' (case-sensitive)`,
+        message: `bad query arguments: ${badQueryArguments.join(" ")}`,
         success: false
       });
     } else {
-      queryText = queryText.concat(` WHERE vacant = ${req.query.vacant === `true`}`);
+      queryText = `${queryText} WHERE`;
     }
   }
 
+  const queryHelper = [];
+  if (req.query.vacant !== undefined) {
+    queryHelper.push(`vacant = ${req.query.vacant === `true`}`);
+  }
+
+  queryText = `${queryText} ${queryHelper.join(` AND `)}`;
   pgClient.query(queryText).then((dbRes) => {
     return res.status(200).send({
       data: dbRes.rows,
@@ -72,13 +83,15 @@ app.get(`/api/v1/tables`, (req, res) => {
   }).catch((e: Error) => {
     return res.status(400).send({
       message: e.stack,
+      query: queryText,
       success: false
     });
   });
 });
 
 // guest list
-// seated, count
+// ?seated=(true,false)
+// ?count=(number)
 app.get(`/api/v1/guests`, (req, res) => {
   const constraints = requestValidator.constraintsFactory(0, 0, 0, 0, 0, 2);
   const preCheckVerdict = requestValidator.requestPreCheck(req, constraints);
