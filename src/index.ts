@@ -31,8 +31,8 @@ app.use(bodyParser.urlencoded({ extended: false }));
 // table list
 // ?vacant=(true,false)
 app.get(`/api/v1/tables`, (req, res) => {
-  const constraints = requestValidator.constraintsFactory(0, 0, 0, 0, 0, 1);
-  const preCheckVerdict = requestValidator.requestPreCheck(req, constraints);
+  const constraints = requestValidator.preCheckerConstraintsFactory(0, 0, 0, 0, 0, 1);
+  const preCheckVerdict = requestValidator.requestPreChecker(req, constraints);
 
   // if bad body/params/query arguments
   if (preCheckVerdict !== ``) {
@@ -93,8 +93,8 @@ app.get(`/api/v1/tables`, (req, res) => {
 // ?seated=(true,false)
 // ?count=(number)
 app.get(`/api/v1/guests`, (req, res) => {
-  const constraints = requestValidator.constraintsFactory(0, 0, 0, 0, 0, 2);
-  const preCheckVerdict = requestValidator.requestPreCheck(req, constraints);
+  const constraints = requestValidator.preCheckerConstraintsFactory(0, 0, 0, 0, 0, 2);
+  const preCheckVerdict = requestValidator.requestPreChecker(req, constraints);
 
   // if bad body/params/query arguments
   if (preCheckVerdict !== ``) {
@@ -163,8 +163,8 @@ app.get(`/api/v1/guests`, (req, res) => {
 
 // add guest
 app.post(`/api/v1/newGuest`, (req, res) => {
-  const constraints = requestValidator.constraintsFactory(3, 3, 0, 0, 0, 0);
-  const preCheckVerdict = requestValidator.requestPreCheck(req, constraints);
+  const constraints = requestValidator.preCheckerConstraintsFactory(3, 3, 0, 0, 0, 0);
+  const preCheckVerdict = requestValidator.requestPreChecker(req, constraints);
   if (preCheckVerdict !== ``) {
     return res.status(400).send({
       message: preCheckVerdict,
@@ -206,8 +206,8 @@ app.post(`/api/v1/newGuest`, (req, res) => {
 
 // seat guests at a table
 app.put(`/api/v1/tables/:number`, (req, res) => {
-  const constraints = requestValidator.constraintsFactory(0, 0, 1, 1, 0, 0);
-  const preCheckVerdict = requestValidator.requestPreCheck(req, constraints);
+  const constraints = requestValidator.preCheckerConstraintsFactory(0, 0, 1, 1, 0, 0);
+  const preCheckVerdict = requestValidator.requestPreChecker(req, constraints);
   if (preCheckVerdict !== ``) {
     return res.status(400).send({
       message: preCheckVerdict,
