@@ -1,62 +1,31 @@
+import { ParamsDictionary, Request } from "express-serve-static-core";
+
 declare module "requestValidator.ts" {
-  export function checkerConstraintsFactory(
-    body?: {
-      acceptableValues: string[],
-      isNumber: boolean,
-      key: string,
-      value: any
-    }[],
-    params?: {
-      acceptableValues: string[],
-      isNumber: boolean,
-      key: string,
-      value: any
-    }[],
-    query?: {
-      acceptableValues: string[],
-      isNumber: boolean,
-      key: string,
-      value: any
-    }[]
-  ): CheckerConstraints
-
-  export function preCheckerConstraintsFactory(
-    bodyMin: number, bodyMax: number,
-    paramMin: number, paramMax: number,
-    queryMin: number, queryMax: number
-  ): PreCheckerConstraints
-
-  export function requestPreChecker(
-    req: Request,
-    constraints: PreCheckerConstraints
-  ): string
+  export function checkerConstraintsFactory(base: {
+    body?: CheckerConstraint,
+    params?: CheckerConstraint,
+    query?: CheckerConstraint
+  }): CheckerConstraints
 
   export function requestChecker(
-    req: Request,
+    req: Request<ParamsDictionary>,
     constraints: CheckerConstraints
   ): string
 }
 
-declare interface PreCheckerConstraint {
-  maxLength: number,
-  minLength: number
-}
-
-declare interface PreCheckerConstraints {
-  body: PreCheckerConstraint,
-  params: PreCheckerConstraint,
-  query: PreCheckerConstraint
-}
-
 declare interface CheckerConstraint {
-  acceptableValues: Array<string>,
-  isNumber: boolean,
-  key: string,
-  value: any
+  arguments: Array<{
+    acceptableValues: string[],
+    isNumber: boolean,
+    isRequired: boolean,
+    key: string
+  }>,
+  min: number,
+  max: number
 }
 
 declare interface CheckerConstraints {
-  body?: CheckerConstraint[],
-  params?: CheckerConstraint[],
-  query?: CheckerConstraint[]
+  body?: CheckerConstraint;
+  params?: CheckerConstraint;
+  query?: CheckerConstraint;
 }

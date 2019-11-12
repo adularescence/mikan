@@ -11,16 +11,100 @@ const port = 5000;
 const pgClient = new Postgres.Client(auth.pg);
 pgClient.connect();
 
-declare interface Table {
-  count: number;
-  number: number;
-  type: string;
-  vacant: boolean;
-}
-
-// Parse incoming requests data
+// Parse incoming requests' data
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
+
+// for validating incoming requests' body/params/query arguments
+const constraints = {
+  // DELETE
+
+  // GET
+  getApiV1Guests: requestValidator.constraintsFactory({
+    query: {
+      arguments: [
+        {
+          acceptableValues: [
+            `false`,
+            `true`
+          ],
+          isNumber: false,
+          isRequired: true,
+          key: `seated`
+        },
+        {
+          acceptableValues: [],
+          isNumber: true,
+          isRequired: false,
+          key: `count`
+        }
+      ],
+      max: 2,
+      min: 0
+    }
+  }),
+  getApiV1Tables: requestValidator.constraintsFactory({
+    query: {
+      arguments: [
+        {
+          acceptableValues: [
+            `false`,
+            `true`
+          ],
+          isNumber: false,
+          isRequired: false,
+          key: `vacant`
+        },
+      ],
+      max: 1,
+      min: 0
+    }
+  }),
+
+  // POST
+  postApiV1NewGuest: requestValidator.constraintsFactory({
+    body: {
+      arguments: [
+        {
+          acceptableValues: [],
+          isNumber: true,
+          isRequired: true,
+          key: `adults`
+        },
+        {
+          acceptableValues: [],
+          isNumber: true,
+          isRequired: true,
+          key: `children`
+        },
+        {
+          acceptableValues: [],
+          isNumber: false,
+          isRequired: true,
+          key: `name`
+        }
+      ],
+      max: 3,
+      min: 3
+    }
+  }),
+
+  // PUT
+  putApiV1TablesNumber: requestValidator.constraintsFactory({
+    params: {
+      arguments: [
+        {
+          acceptableValues: [],
+          isNumber: true,
+          isRequired: true,
+          key: `number`
+        }
+      ],
+      max: 1,
+      min: 1
+    }
+  })
+};
 
 /* DELETE */
 
@@ -31,49 +115,23 @@ app.use(bodyParser.urlencoded({ extended: false }));
 // table list
 // ?vacant=(true,false)
 app.get(`/api/v1/tables`, (req, res) => {
-  const constraints = requestValidator.preCheckerConstraintsFactory(0, 0, 0, 0, 0, 1);
-  const preCheckVerdict = requestValidator.requestPreChecker(req, constraints);
-
-  // if bad body/params/query arguments
-  if (preCheckVerdict !== ``) {
+  // ensure validity of body/params/query arguments
+  const checkerVerdict = requestValidator.requestChecker(req, constraints.getApiV1Tables);
+  if (checkerVerdict !== ``) {
     return res.status(400).send({
-      message: preCheckVerdict,
+      message: checkerVerdict,
       success: false
     });
   }
 
-  // ensure validity of query arguments
-  let queryText = `SELECT * FROM tables`;
-  const queryArguments = Object.entries(req.query);
-  if (queryArguments.length !== 0) {
-    const badQueryArguments = [];
-    queryArguments.forEach((keyval) => {
-      switch (keyval[0]) {
-        case `vacant`:
-          if (keyval[1] !== `true` && keyval[1] !== `false`) {
-            badQueryArguments.push(`${keyval[0]}=${keyval[1]}`);
-          }
-          break;
-        default:
-          badQueryArguments.push(`${keyval[0]}=${keyval[1]}`);
-      }
-    });
-    if (badQueryArguments.length !== 0) {
-      return res.status(400).send({
-        message: `bad query arguments: ${badQueryArguments.join(" ")}`,
-        success: false
-      });
-    } else {
-      queryText = `${queryText} WHERE`;
-    }
-  }
-
+  let queryText = `SELECT * FROM TABLES`;
   const queryHelper = [];
   if (req.query.vacant !== undefined) {
     queryHelper.push(`vacant = ${req.query.vacant === `true`}`);
   }
-
-  queryText = `${queryText} ${queryHelper.join(` AND `)}`;
+  if (queryHelper.length !== 0) {
+    queryText = `${queryText} WHERE ${queryHelper.join(` AND `)}`;
+  }
   pgClient.query(queryText).then((dbRes) => {
     return res.status(200).send({
       data: dbRes.rows,
@@ -90,51 +148,19 @@ app.get(`/api/v1/tables`, (req, res) => {
 });
 
 // guest list
-// ?seated=(true,false)
-// ?count=(number)
+// seated?=(true,false)
+// count?=(number)
 app.get(`/api/v1/guests`, (req, res) => {
-  const constraints = requestValidator.preCheckerConstraintsFactory(0, 0, 0, 0, 0, 2);
-  const preCheckVerdict = requestValidator.requestPreChecker(req, constraints);
-
-  // if bad body/params/query arguments
-  if (preCheckVerdict !== ``) {
+  // ensure validity of body/params/query arguments
+  const checkerVerdict = requestValidator.requestChecker(req, constraints.getApiV1Guests);
+  if (checkerVerdict !== ``) {
     return res.status(400).send({
-      message: preCheckVerdict,
+      message: checkerVerdict,
       success: false
     });
   }
 
   let queryText = `SELECT * FROM guests`;
-
-  // ensure validity of query arguments
-  if (Object.entries(req.query).length !== 0) {
-    const badQueryArguments = [];
-    Object.entries(req.query).forEach((keyval) => {
-      switch (keyval[0]) {
-        case `count`:
-          if (isNaN(parseInt(req.query.count, 10))) {
-            badQueryArguments.push(`${keyval[0]}=${keyval[1]}`);
-          }
-          break;
-        case `seated`:
-          if (keyval[1] !== `true` && keyval[1] !== `false`) {
-            badQueryArguments.push(`${keyval[0]}=${keyval[1]}`);
-          }
-          break;
-        default:
-          badQueryArguments.push(`${keyval[0]}=${keyval[1]}`);
-      }
-    });
-    if (badQueryArguments.length !== 0) {
-      return res.status(400).send({
-        message: `bad query arguments: ${badQueryArguments.join(" ")}`,
-        success: false
-      });
-    } else {
-      queryText = `${queryText} WHERE`;
-    }
-  }
-
   const queryHelper = [];
   if (req.query.count !== undefined) {
     queryHelper.push(`(children + adults) = ${parseInt(req.query.count, 10)}`);
@@ -142,8 +168,9 @@ app.get(`/api/v1/guests`, (req, res) => {
   if (req.query.seated !== undefined) {
     queryHelper.push(`seated IS ${req.query.seated === `true` ? `NOT NULL` : `NULL`}`);
   }
-
-  queryText = `${queryText} ${queryHelper.join(` AND `)}`;
+  if (queryHelper.length !== 0) {
+    queryText = `${queryText} WHERE ${queryHelper.join(` AND `)}`;
+  }
   pgClient.query(queryText).then((dbRes) => {
     return res.status(200).send({
       data: dbRes.rows,
@@ -162,32 +189,29 @@ app.get(`/api/v1/guests`, (req, res) => {
 /* POST */
 
 // add guest
+// adults=(number)
+// children=(number)
+// name=(any)
 app.post(`/api/v1/newGuest`, (req, res) => {
-  const constraints = requestValidator.preCheckerConstraintsFactory(3, 3, 0, 0, 0, 0);
-  const preCheckVerdict = requestValidator.requestPreChecker(req, constraints);
-  if (preCheckVerdict !== ``) {
+  // ensure validity of body/params/query arguments
+  const checkerVerdict = requestValidator.requestChecker(req, constraints.postApiV1NewGuest);
+  if (checkerVerdict !== ``) {
     return res.status(400).send({
-      message: preCheckVerdict,
+      message: checkerVerdict,
       success: false
     });
   }
 
-  const name = req.body.name;
   const adults = parseInt(req.body.adults, 10);
   const children = parseInt(req.body.children, 10);
-  if (isNaN(adults) || isNaN(children)) {
-    return res.status(400).send({
-      message: `be sure to use numbers for # of adults/children (${adults}/${children})`,
-      success: false
-    });
-  }
+  const name = req.body.name;
   // entry timestamp created here
   // or should it be created in the app?
   const entered = Date.now();
 
-  const text = `INSERT INTO guests (name, adults, children, entered) VALUES ($1, $2, $3, to_timestamp($4 / 1000.0)) RETURNING *`;
-  const values = [name, adults, children, entered];
-  pgClient.query(text, values).then((dbRes) => {
+  const queryText = `INSERT INTO guests (name, adults, children, entered) VALUES ($1, $2, $3, to_timestamp($4 / 1000.0)) RETURNING *`;
+  const queryValues = [name, adults, children, entered];
+  pgClient.query(queryText, queryValues).then((dbRes) => {
     const newGuest = dbRes.rows[0];
     return res.status(201).send({
       data: newGuest,
@@ -197,7 +221,9 @@ app.post(`/api/v1/newGuest`, (req, res) => {
   }).catch((e: Error) => {
     res.status(400).send({
       message: e.stack,
-      success: false
+      query: queryText,
+      success: false,
+      values: queryValues.join(" ")
     });
   });
 });
@@ -205,26 +231,20 @@ app.post(`/api/v1/newGuest`, (req, res) => {
 /* PUT */
 
 // seat guests at a table
+// number=(number)
 app.put(`/api/v1/tables/:number`, (req, res) => {
-  const constraints = requestValidator.preCheckerConstraintsFactory(0, 0, 1, 1, 0, 0);
-  const preCheckVerdict = requestValidator.requestPreChecker(req, constraints);
-  if (preCheckVerdict !== ``) {
+  // ensure validity of body/params/query arguments
+  const checkerVerdict = requestValidator.requestChecker(req, constraints.putApiV1TablesNumber);
+  if (checkerVerdict !== ``) {
     return res.status(400).send({
-      message: preCheckVerdict,
+      message: checkerVerdict,
       success: false
     });
   }
 
-  // ensure table number is a number
   const tableNumber = parseInt(req.params.number, 10);
-  if (isNaN(tableNumber)) {
-    return res.status(400).send({
-      message: `${req.params.number} is ${tableNumber}`,
-      succes: false
-    });
-  }
-
-  pgClient.query(`SELECT vacant FROM tables WHERE number = ${tableNumber}`).then((dbRes) => {
+  const outerQueryText = `SELECT vacant FROM tables WHERE number = ${tableNumber}`;
+  pgClient.query(outerQueryText).then((dbRes) => {
     // table number not found
     if (dbRes.rows.length === 0) {
       return res.status(400).send({
@@ -242,7 +262,8 @@ app.put(`/api/v1/tables/:number`, (req, res) => {
     }
 
     // table number exists and is vacant, so update
-    pgClient.query(`UPDATE tables SET vacant = false WHERE number = ${tableNumber} RETURNING *`).then((dbUpdateRes) => {
+    const innerQueryText = `UPDATE tables SET vacant = false WHERE number = ${tableNumber} RETURNING *`;
+    pgClient.query(innerQueryText).then((dbUpdateRes) => {
       return res.status(201).send({
         data: dbUpdateRes.rows[0],
         message: `table #${tableNumber} has been seated and is no longer vacant`,
@@ -251,12 +272,14 @@ app.put(`/api/v1/tables/:number`, (req, res) => {
     }).catch((e: Error) => {
       return res.status(400).send({
         message: e.stack,
+        query: innerQueryText,
         success: false
       });
     });
   }).catch((e: Error) => {
     res.status(400).send({
       message: e.stack,
+      query: outerQueryText,
       success: false
     });
   });

@@ -1,145 +1,111 @@
 import { ParamsDictionary, Request } from "express-serve-static-core";
 
-declare interface PreCheckerConstraint {
-  maxLength: number;
-  minLength: number;
-}
-
-declare interface PreCheckerConstraints {
-  body: PreCheckerConstraint;
-  params: PreCheckerConstraint;
-  query: PreCheckerConstraint;
-}
-
 declare interface CheckerConstraint {
-  acceptableValues: string[];
-  isNumber: boolean;
-  key: string;
-  value: any;
+  arguments: Array<{
+    acceptableValues: string[],
+    isNumber: boolean,
+    isRequired: boolean,
+    key: string
+  }>;
+  min: number;
+  max: number;
 }
 
 declare interface CheckerConstraints {
-  body?: CheckerConstraint[];
-  params?: CheckerConstraint[];
-  query?: CheckerConstraint[];
+  body?: CheckerConstraint;
+  params?: CheckerConstraint;
+  query?: CheckerConstraint;
 }
 
-const preCheckerConstraintsFactory = (
-  bodyMin: number, bodyMax: number,
-  paramMin: number, paramMax: number,
-  queryMin: number, queryMax: number
-): PreCheckerConstraints => {
-  return {
-    body: {
-      maxLength: bodyMax,
-      minLength: bodyMin
-    },
-    params: {
-      maxLength: paramMax,
-      minLength: paramMin
-    },
-    query: {
-      maxLength: queryMax,
-      minLength: queryMin
-    }
-  };
-};
-
-const checkerConstraintsFactory = (
-  body?: Array<{
-    acceptableValues: string[],
-    isNumber: boolean,
-    key: string,
-    value: any
-  }>,
-  params?: Array<{
-    acceptableValues: string[],
-    isNumber: boolean,
-    key: string,
-    value: any
-  }>,
-  query?: Array<{
-    acceptableValues: string[],
-    isNumber: boolean,
-    key: string,
-    value: any
-  }>
-): CheckerConstraints => {
-  const checkerConstraints: CheckerConstraints = {
-    body: [],
-    params: [],
-    query: []
-  };
-  if (body) {
-    checkerConstraints.body = body;
+const constraintsFactory = (base: {
+  body?: CheckerConstraint,
+  params?: CheckerConstraint,
+  query?: CheckerConstraint
+}): CheckerConstraints => {
+  const checkerConstraints: CheckerConstraints = {};
+  if (base.body) {
+    checkerConstraints.body = base.body;
   }
-  if (params) {
-    checkerConstraints.params = params;
+  if (base.params) {
+    checkerConstraints.params = base.params;
   }
-  if (query) {
-    checkerConstraints.query = query;
+  if (base.query) {
+    checkerConstraints.query = base.query;
   }
   return checkerConstraints;
 };
 
-const requestPreChecker = (req: Request<ParamsDictionary>, constraints: PreCheckerConstraints): string => {
-  const verdict = [];
-  Object.keys(constraints).forEach((key) => {
-    const count = Object.keys(req[`${key}`]).length;
-    const max = constraints[`${key}`].maxLength;
-    const min = constraints[`${key}`].minLength;
-    if (count > max) {
-      verdict.push(`The number of ${key} arguments exceeds the alloted amount (${count} vs ${max}).`);
-    } else if (count < min) {
-      verdict.push(`The number of ${key} arguments exceeds the alloted amount (${count} vs ${min}).`);
-    }
-  });
-  return verdict.join(" ");
-};
-
 const requestChecker = (req: Request<ParamsDictionary>, constraints: CheckerConstraints): string => {
-  const badArguments: {
-    body: string[],
-    params: string[],
-    query: string[]
-  } = {
-    body: [],
-    params: [],
-    query: []
-  };
   let verdict = ``;
-
-  Object.keys(badArguments).forEach((masterKey) => {
-    const badArgumentsList = badArguments[`${masterKey}`];
-    constraints[`${masterKey}`].forEach((arg: CheckerConstraint) => {
-      const thisKeyVal = `${arg.key}=${arg.value}`;
-      if (arg.isNumber) {
-        if (isNaN(parseInt(arg.value, 10))) {
-          badArgumentsList.push(thisKeyVal);
-        }
-      } else {
-        let foundAcceptableValue = false;
-        for (const goodValue in arg.acceptableValues) {
-          if (arg.value === goodValue) {
-            foundAcceptableValue = true;
-            break;
+  const collector: {
+    body: {
+      badArguments: string[],
+      badCount: string
+    },
+    params: {
+      badArguments: string[],
+      badCount: string
+    },
+    query: {
+      badArguments: string[],
+      badCount: string
+    },
+  } = {
+    body: {
+      badArguments: [],
+      badCount: ``
+    },
+    params:  {
+      badArguments: [],
+      badCount: ``
+    },
+    query:  {
+      badArguments: [],
+      badCount: ``
+    }
+  };
+  Object.keys(constraints).forEach((masterKey) => {
+    let badCount = collector[`${masterKey}`].badCount;
+    const badArguments = collector[`${masterKey}`].badArguments;
+    if (constraints.hasOwnProperty(masterKey)) {
+      const constraint: CheckerConstraint = constraints[`${masterKey}`];
+      const requestValues = Object.values(req[`${masterKey}`]);
+      if (requestValues.length < constraint.min) {
+        badCount = `The number of ${masterKey} arguments is less than the alloted amount (${requestValues.length} vs ${constraint.min}). `;
+      } else if (requestValues.length > constraint.max) {
+        badCount = `The number of ${masterKey} arguments is more than the alloted amount (${requestValues.length} vs ${constraint.max}). `;
+      }
+      constraint.arguments.forEach((arg) => {
+        const value = req[`${masterKey}`][`${arg.key}`];
+        if (value === undefined && arg.isRequired) {
+          badArguments.push(`${arg.key}=${value} (required)`);
+        } else if (arg.isNumber) {
+          if (isNaN(parseInt(value, 10))) {
+            badArguments.push(`${arg.key}=${value} (NaN)`);
+          }
+        } else {
+          let foundAcceptableValue = arg.acceptableValues.length === 0;
+          for (const acceptableValue of arg.acceptableValues) {
+            if (value === acceptableValue) {
+              foundAcceptableValue = true;
+              break;
+            }
+          }
+          if (!foundAcceptableValue) {
+            badArguments.push(`${arg.key}=${value} (acceptable: ${arg.acceptableValues.join(`, `)})`);
           }
         }
-        if (!foundAcceptableValue) {
-          badArgumentsList.push(thisKeyVal);
-        }
-      }
-    });
-    if (badArgumentsList.length !== 0) {
-      verdict = verdict.concat(`Bad ${masterKey} arguments: ${badArgumentsList.join(`, `)}. `);
+      });
+    }
+    verdict = `${verdict}${badCount}`;
+    if (badArguments.length !== 0) {
+      verdict = `${verdict}Bad ${masterKey} arguments: ${badArguments.join(`, `)}. `;
     }
   });
   return verdict.trim();
 };
 
 export default {
-  checkerConstraintsFactory,
-  preCheckerConstraintsFactory,
-  requestChecker,
-  requestPreChecker
+  constraintsFactory,
+  requestChecker
 };
