@@ -90,6 +90,37 @@ const constraints = {
   }),
 
   // PUT
+  putApiV1GuestsId: requestValidator.constraintsFactory({
+    body: {
+      arguments: [
+        {
+          acceptableValues: [
+            `seated`,
+            `ordered`,
+            `served`,
+            `exited`
+          ],
+          isNumber: false,
+          isRequired: true,
+          key: `target`
+        }
+      ],
+      max: 1,
+      min: 1
+    },
+    params: {
+      arguments: [
+        {
+          acceptableValues: [],
+          isNumber: true,
+          isRequired: true,
+          key: `id`
+        },
+      ],
+      max: 1,
+      min: 1
+    }
+  }),
   putApiV1TablesNumber: requestValidator.constraintsFactory({
     params: {
       arguments: [
@@ -113,7 +144,8 @@ const constraints = {
 /* GET */
 
 // table list
-// ?vacant=(true,false)
+// query:
+//   vacant?=(true,false)
 app.get(`/api/v1/tables`, (req, res) => {
   // ensure validity of body/params/query arguments
   const checkerVerdict = requestValidator.requestChecker(req, constraints.getApiV1Tables);
@@ -148,8 +180,9 @@ app.get(`/api/v1/tables`, (req, res) => {
 });
 
 // guest list
-// seated?=(true,false)
-// count?=(number)
+// query:
+//   count?=(number)
+//   seated?=(true,false)
 app.get(`/api/v1/guests`, (req, res) => {
   // ensure validity of body/params/query arguments
   const checkerVerdict = requestValidator.requestChecker(req, constraints.getApiV1Guests);
@@ -189,9 +222,10 @@ app.get(`/api/v1/guests`, (req, res) => {
 /* POST */
 
 // add guest
-// adults=(number)
-// children=(number)
-// name=(any)
+// body:
+//   adults=(number)
+//   children=(number)
+//   name=(any)
 app.post(`/api/v1/newGuest`, (req, res) => {
   // ensure validity of body/params/query arguments
   const checkerVerdict = requestValidator.requestChecker(req, constraints.postApiV1NewGuest);
@@ -230,8 +264,69 @@ app.post(`/api/v1/newGuest`, (req, res) => {
 
 /* PUT */
 
+// update guest timestamp
+// body:
+//   target=(seated,ordered,served,exited)
+// params:
+//   id=(number)
+app.put(`/api/v1/guests/:id`, (req, res) => {
+  // ensure validity of body/params/query arguments
+  const checkerVerdict = requestValidator.requestChecker(req, constraints.putApiV1GuestsId);
+  if (checkerVerdict !== ``) {
+    return res.status(400).send({
+      message: checkerVerdict,
+      success: false
+    });
+  }
+
+  const guestId = parseInt(req.params.id, 10);
+  const target = req.body.target;
+  const outerQueryText = `SELECT ${target} FROM guests WHERE id = ${guestId}`;
+  pgClient.query(outerQueryText).then((dbRes) => {
+    // guest with id not found
+    if (dbRes.rows.length === 0) {
+      return res.status(400).send({
+        message: `guest with id #${guestId} not found`,
+        success: false
+      });
+    }
+
+    // guest's ${target} already has a timestamp
+    if (dbRes.rows[0][`${target}`] !== null) {
+      return res.status(400).send({
+        message: `guest already has a timestamp for '${target}'`,
+        success: false
+      });
+    }
+
+    // guest with id exists and ${target} has not been filled, so update
+    const targetTimestamp = Date.now();
+    const innerQueryText = `UPDATE guests SET ${target} = to_timestamp(${targetTimestamp} / 1000.0) WHERE id = ${guestId} RETURNING *`;
+    pgClient.query(innerQueryText).then((dbUpdateRes) => {
+      return res.status(201).send({
+        data: dbUpdateRes.rows[0],
+        message: `updated ${target} with timestamp of ${targetTimestamp} for guest with id #${guestId}`,
+        success: true
+      });
+    }).catch((e: Error) => {
+      return res.status(400).send({
+        message: e.stack,
+        query: innerQueryText,
+        success: false
+      });
+    });
+  }).catch((e: Error) => {
+    return res.status(400).send({
+      message: e.stack,
+      query: outerQueryText,
+      success: false
+    });
+  });
+});
+
 // seat guests at a table
-// number=(number)
+// params:
+//   number=(number)
 app.put(`/api/v1/tables/:number`, (req, res) => {
   // ensure validity of body/params/query arguments
   const checkerVerdict = requestValidator.requestChecker(req, constraints.putApiV1TablesNumber);
@@ -284,11 +379,6 @@ app.put(`/api/v1/tables/:number`, (req, res) => {
     });
   });
 });
-
-// update guest timestamp
-// app.put(`/api/v1/guests`, (req, res) => {
-
-// });
 
 app.listen(port, () => {
   // tslint:disable-next-line:no-console
