@@ -16,6 +16,20 @@ declare module "requestValidator.ts" {
 declare interface CheckerConstraint {
   arguments: Array<{
     acceptableValues: string[],
+    dependencies: {
+      body?: Array<{
+        condition: any,
+        dependency: string
+      }>,
+      params?: Array<{
+        condition: any,
+        dependency: string
+      }>,
+      query?: Array<{
+        condition: any,
+        dependency: string
+      }>,
+    },
     isNumber: boolean,
     isRequired: boolean,
     key: string

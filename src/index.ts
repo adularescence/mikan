@@ -1,4 +1,3 @@
-import { pg } from "auth.json";
 import bodyParser from "body-parser";
 import express from "express";
 import Postgres from "pg";
@@ -28,12 +27,14 @@ const constraints = {
             `false`,
             `true`
           ],
+          dependencies: {},
           isNumber: false,
-          isRequired: true,
+          isRequired: false,
           key: `seated`
         },
         {
           acceptableValues: [],
+          dependencies: {},
           isNumber: true,
           isRequired: false,
           key: `count`
@@ -51,6 +52,7 @@ const constraints = {
             `false`,
             `true`
           ],
+          dependencies: {},
           isNumber: false,
           isRequired: false,
           key: `vacant`
@@ -67,18 +69,21 @@ const constraints = {
       arguments: [
         {
           acceptableValues: [],
+          dependencies: {},
           isNumber: true,
           isRequired: true,
           key: `adults`
         },
         {
           acceptableValues: [],
+          dependencies: {},
           isNumber: true,
           isRequired: true,
           key: `children`
         },
         {
           acceptableValues: [],
+          dependencies: {},
           isNumber: false,
           isRequired: true,
           key: `name`
@@ -100,6 +105,14 @@ const constraints = {
             `served`,
             `exited`
           ],
+          dependencies: {
+            query: [
+              {
+                condition: `seated`,
+                dependency: `tableNumber`
+              }
+            ]
+          },
           isNumber: false,
           isRequired: true,
           key: `target`
@@ -112,6 +125,7 @@ const constraints = {
       arguments: [
         {
           acceptableValues: [],
+          dependencies: {},
           isNumber: true,
           isRequired: true,
           key: `id`
@@ -119,20 +133,19 @@ const constraints = {
       ],
       max: 1,
       min: 1
-    }
-  }),
-  putApiV1TablesNumber: requestValidator.constraintsFactory({
-    params: {
+    },
+    query: {
       arguments: [
         {
           acceptableValues: [],
+          dependencies: {},
           isNumber: true,
-          isRequired: true,
-          key: `number`
+          isRequired: false,
+          key: `tableNumber`
         }
       ],
       max: 1,
-      min: 1
+      min: 0
     }
   })
 };
@@ -269,6 +282,8 @@ app.post(`/api/v1/newGuest`, (req, res) => {
 //   target=(seated,ordered,served,exited)
 // params:
 //   id=(number)
+// query:
+//   tableNumber?(target=seated)=(number)
 app.put(`/api/v1/guests/:id`, (req, res) => {
   // ensure validity of body/params/query arguments
   const checkerVerdict = requestValidator.requestChecker(req, constraints.putApiV1GuestsId);
@@ -299,80 +314,62 @@ app.put(`/api/v1/guests/:id`, (req, res) => {
       });
     }
 
-    // guest with id exists and ${target} has not been filled, so update
-    const targetTimestamp = Date.now();
-    const innerQueryText = `UPDATE guests SET ${target} = to_timestamp(${targetTimestamp} / 1000.0) WHERE id = ${guestId} RETURNING *`;
-    pgClient.query(innerQueryText).then((dbUpdateRes) => {
-      return res.status(201).send({
-        data: dbUpdateRes.rows[0],
-        message: `updated ${target} with timestamp of ${targetTimestamp} for guest with id #${guestId}`,
-        success: true
+    const updateGuest = (extraInfo?: string) => {
+      // guest with id exists and ${target} has not been filled, so update
+      const targetTimestamp = Date.now();
+      const queryText = `UPDATE guests SET ${target} = to_timestamp(${targetTimestamp} / 1000.0) WHERE id = ${guestId} RETURNING *`;
+      pgClient.query(queryText).then((dbUpdateRes) => {
+        return res.status(201).send({
+          data: dbUpdateRes.rows[0],
+          message: `Updated ${target} with timestamp of ${targetTimestamp} for guest with id #${guestId}.${extraInfo}`,
+          success: true
+        });
+      }).catch((e: Error) => {
+        return res.status(400).send({
+          message: e.stack,
+          query: queryText,
+          success: false
+        });
       });
-    }).catch((e: Error) => {
-      return res.status(400).send({
-        message: e.stack,
-        query: innerQueryText,
-        success: false
+    };
+
+    if (target === `seated`) {
+      const tableNumber = req.query.tableNumber;
+      const vacancyQueryText = `SELECT vacant, count FROM tables WHERE number = ${tableNumber}`;
+      pgClient.query(vacancyQueryText).then((vacancyRes) => {
+        if (vacancyRes.rows[0].vacant === false) {
+          return res.status(400).send({
+            message: `table #${tableNumber} is not vacant and guests could not be seated`,
+            success: false
+          });
+        } else {
+          const tableUpdateQueryText = `UPDATE tables SET vacant = false WHERE number = ${tableNumber} RETURNING *`;
+          pgClient.query(tableUpdateQueryText).then((tableUpdateRes) => {
+            updateGuest(` Seated at table #${tableUpdateRes.rows[0].number}.`);
+          }).catch((e: Error) => {
+            return res.status(400).send({
+              message: e.stack,
+              query: tableUpdateQueryText,
+              success: false
+            });
+          });
+        }
+      }).catch((e: Error) => {
+        return res.status(400).send({
+          message: e.stack,
+          query: vacancyQueryText,
+          success: false
+        });
       });
-    });
+    } else if (target === `exited`) {
+      // TODO: unseat table
+      // need to add column to tables, and add column to guests
+      updateGuest();
+    } else {
+      updateGuest();
+    }
   }).catch((e: Error) => {
     return res.status(400).send({
-      message: e.stack,
-      query: outerQueryText,
-      success: false
-    });
-  });
-});
-
-// seat guests at a table
-// params:
-//   number=(number)
-app.put(`/api/v1/tables/:number`, (req, res) => {
-  // ensure validity of body/params/query arguments
-  const checkerVerdict = requestValidator.requestChecker(req, constraints.putApiV1TablesNumber);
-  if (checkerVerdict !== ``) {
-    return res.status(400).send({
-      message: checkerVerdict,
-      success: false
-    });
-  }
-
-  const tableNumber = parseInt(req.params.number, 10);
-  const outerQueryText = `SELECT vacant FROM tables WHERE number = ${tableNumber}`;
-  pgClient.query(outerQueryText).then((dbRes) => {
-    // table number not found
-    if (dbRes.rows.length === 0) {
-      return res.status(400).send({
-        message: `table #${tableNumber} does not exist`,
-        success: false
-      });
-    }
-
-    // table is not vacant
-    if (dbRes.rows[0].vacant === false) {
-      return res.status(400).send({
-        message: `table #${tableNumber} is not vacant`,
-        success: false
-      });
-    }
-
-    // table number exists and is vacant, so update
-    const innerQueryText = `UPDATE tables SET vacant = false WHERE number = ${tableNumber} RETURNING *`;
-    pgClient.query(innerQueryText).then((dbUpdateRes) => {
-      return res.status(201).send({
-        data: dbUpdateRes.rows[0],
-        message: `table #${tableNumber} has been seated and is no longer vacant`,
-        success: true
-      });
-    }).catch((e: Error) => {
-      return res.status(400).send({
-        message: e.stack,
-        query: innerQueryText,
-        success: false
-      });
-    });
-  }).catch((e: Error) => {
-    res.status(400).send({
       message: e.stack,
       query: outerQueryText,
       success: false

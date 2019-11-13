@@ -3,6 +3,20 @@ import { ParamsDictionary, Request } from "express-serve-static-core";
 declare interface CheckerConstraint {
   arguments: Array<{
     acceptableValues: string[],
+    dependencies: {
+      body?: Array<{
+        condition: any,
+        dependency: string
+      }>,
+      params?: Array<{
+        condition: any,
+        dependency: string
+      }>,
+      query?: Array<{
+        condition: any,
+        dependency: string
+      }>,
+    },
     isNumber: boolean,
     isRequired: boolean,
     key: string
@@ -37,6 +51,16 @@ const constraintsFactory = (base: {
 
 const requestChecker = (req: Request<ParamsDictionary>, constraints: CheckerConstraints): string => {
   let verdict = ``;
+  const dependencyTracker: {
+    body: {},
+    params: {},
+    query: {}
+  }
+   = {
+    body: {},
+    params: {},
+    query: {}
+  };
   const collector: {
     body: {
       badArguments: string[],
@@ -77,22 +101,36 @@ const requestChecker = (req: Request<ParamsDictionary>, constraints: CheckerCons
       }
       constraint.arguments.forEach((arg) => {
         const value = req[`${masterKey}`][`${arg.key}`];
-        if (value === undefined && arg.isRequired) {
-          badArguments.push(`${arg.key}=${value} (required)`);
-        } else if (arg.isNumber) {
-          if (isNaN(parseInt(value, 10))) {
-            badArguments.push(`${arg.key}=${value} (NaN)`);
+        if (value === undefined) {
+          if (arg.isRequired) {
+            badArguments.push(`${arg.key}=${value} (required)`);
           }
         } else {
-          let foundAcceptableValue = arg.acceptableValues.length === 0;
-          for (const acceptableValue of arg.acceptableValues) {
-            if (value === acceptableValue) {
-              foundAcceptableValue = true;
-              break;
+          const badArgumentCount = badArguments.length;
+          if (arg.isNumber) {
+            if (isNaN(parseInt(value, 10))) {
+              badArguments.push(`${arg.key}=${value} (NaN)`);
+            }
+          } else {
+            let foundAcceptableValue = arg.acceptableValues.length === 0;
+            for (const acceptableValue of arg.acceptableValues) {
+              if (value === acceptableValue) {
+                foundAcceptableValue = true;
+                break;
+              }
+            }
+            if (!foundAcceptableValue) {
+              badArguments.push(`${arg.key}=${value} (acceptable: ${arg.acceptableValues.join(`, `)})`);
             }
           }
-          if (!foundAcceptableValue) {
-            badArguments.push(`${arg.key}=${value} (acceptable: ${arg.acceptableValues.join(`, `)})`);
+          if (badArguments.length === badArgumentCount) {
+            Object.keys(arg.dependencies).forEach((argumentType) => {
+              arg.dependencies[`${argumentType}`].forEach((dependencyObject: { dependency: string, condition: any}) => {
+                if (value === dependencyObject.condition) {
+                  dependencyTracker[`${argumentType}`][`${dependencyObject.dependency}`] = arg.key;
+                }
+              });
+            });
           }
         }
       });
@@ -101,6 +139,14 @@ const requestChecker = (req: Request<ParamsDictionary>, constraints: CheckerCons
     if (badArguments.length !== 0) {
       verdict = `${verdict}Bad ${masterKey} arguments: ${badArguments.join(`, `)}. `;
     }
+  });
+  Object.keys(dependencyTracker).forEach((argumentType) => {
+    Object.keys(dependencyTracker[`${argumentType}`]).forEach((dependency: string) => {
+      // weirdo Request<ParamsDictionary> doesn't have Object.hasOwnProperty(), so this comparison will do
+      if (req[`${argumentType}`][`${dependency}`] === undefined) {
+        verdict = `${verdict}${dependencyTracker[`${argumentType}`][`${dependency}`]} is dependent on the existance of the ${argumentType} argument of ${dependency}. `;
+      }
+    });
   });
   return verdict.trim();
 };
