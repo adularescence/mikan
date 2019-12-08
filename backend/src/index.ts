@@ -45,19 +45,6 @@ const constraints = {
     }
   }),
   getApiV1Tables: requestValidator.constraintsFactory({
-    params: {
-      arguments: [
-        {
-          acceptableValues: [],
-          dependencies: {},
-          isNumber: true,
-          isRequired: false,
-          key: `number`
-        }
-      ],
-      max: 1,
-      min: 0
-    },
     query: {
       arguments: [
         {
@@ -91,6 +78,31 @@ const constraints = {
         },
       ],
       max: 3,
+      min: 0
+    }
+  }),
+  getApiV1TablesNumber: requestValidator.constraintsFactory({
+    body: {
+      arguments: [],
+      max: 0,
+      min: 0
+    },
+    params: {
+      arguments: [
+        {
+          acceptableValues: [],
+          dependencies: {},
+          isNumber: true,
+          isRequired: false,
+          key: `number`
+        }
+      ],
+      max: 1,
+      min: 1
+    },
+    query: {
+      arguments: [],
+      max: 0,
       min: 0
     }
   }),
@@ -229,13 +241,11 @@ app.get(`/api/v1/guests`, (req, res) => {
 });
 
 // table list
-// params:
-//   number?=(number)
 // query:
 //   count?=(number)
 //   type?=(booth,deuce,hightop,table)
 //   vacant?=(true,false)
-app.get(`/api/v1/tables/:number`, (req, res) => {
+app.get(`/api/v1/tables`, (req, res) => {
   // ensure validity of body/params/query arguments
   const checkerVerdict = requestValidator.requestChecker(req, constraints.getApiV1Tables);
   if (checkerVerdict !== ``) {
@@ -248,9 +258,6 @@ app.get(`/api/v1/tables/:number`, (req, res) => {
   let queryText = `SELECT * FROM TABLES`;
   const queryHelper = [];
   const queryArguments = [`count`, `type`, `vacant`];
-  if (req.params.number !== undefined) {
-    queryHelper.push(`number = ${req.params.number}`);
-  }
   queryArguments.forEach((queryArgumentKey) => {
     const queryArgument = req.query[`${queryArgumentKey}`];
     if (queryArgument !== undefined) {
@@ -264,6 +271,36 @@ app.get(`/api/v1/tables/:number`, (req, res) => {
     return res.status(200).send({
       data: dbRes.rows,
       message: `tables retrieved successfully`,
+      success: `true`
+    });
+  }).catch((e: Error) => {
+    return res.status(400).send({
+      message: e.stack,
+      query: queryText,
+      success: false
+    });
+  });
+});
+
+// table list
+// params:
+//   number=(number)
+app.get(`/api/v1/tables/:number`, (req, res) => {
+  // ensure validity of body/params/query arguments
+  const checkerVerdict = requestValidator.requestChecker(req, constraints.getApiV1TablesNumber);
+  if (checkerVerdict !== ``) {
+    return res.status(400).send({
+      message: checkerVerdict,
+      success: false
+    });
+  }
+
+  const tableNumber = req.params.number;
+  const queryText = `SELECT * FROM TABLES WHERE number = ${tableNumber}`;
+  pgClient.query(queryText).then((dbRes) => {
+    return res.status(200).send({
+      data: dbRes.rows,
+      message: `table #${tableNumber} retrieved successfully`,
       success: `true`
     });
   }).catch((e: Error) => {
