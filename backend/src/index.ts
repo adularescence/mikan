@@ -20,6 +20,16 @@ const constraints = {
 
   // GET
   getApiV1Guests: requestValidator.constraintsFactory({
+    body: {
+      arguments: [],
+      max: 0,
+      min: 0
+    },
+    params: {
+      arguments: [],
+      max: 0,
+      min: 0
+    },
     query: {
       arguments: [
         {
@@ -45,6 +55,16 @@ const constraints = {
     }
   }),
   getApiV1Tables: requestValidator.constraintsFactory({
+    body: {
+      arguments: [],
+      max: 0,
+      min: 0
+    },
+    params: {
+      arguments: [],
+      max: 0,
+      min: 0
+    },
     query: {
       arguments: [
         {
@@ -135,6 +155,16 @@ const constraints = {
       ],
       max: 3,
       min: 3
+    },
+    params: {
+      arguments: [],
+      max: 0,
+      min: 0
+    },
+    query: {
+      arguments: [],
+      max: 0,
+      min: 0
     }
   }),
 
