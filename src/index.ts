@@ -45,6 +45,19 @@ const constraints = {
     }
   }),
   getApiV1Tables: requestValidator.constraintsFactory({
+    params: {
+      arguments: [
+        {
+          acceptableValues: [],
+          dependencies: {},
+          isNumber: true,
+          isRequired: false,
+          key: `number`
+        }
+      ],
+      max: 1,
+      min: 0
+    },
     query: {
       arguments: [
         {
@@ -223,11 +236,13 @@ app.get(`/api/v1/guests`, (req, res) => {
 });
 
 // table list
+// params:
+//   number?=(number)
 // query:
 //   vacant?=(true,false)
 //   type?=(booth,deuce,hightop,table)
 //   count?=(number)
-app.get(`/api/v1/tables`, (req, res) => {
+app.get(`/api/v1/tables/:number`, (req, res) => {
   // ensure validity of body/params/query arguments
   const checkerVerdict = requestValidator.requestChecker(req, constraints.getApiV1Tables);
   if (checkerVerdict !== ``) {
@@ -239,6 +254,9 @@ app.get(`/api/v1/tables`, (req, res) => {
 
   let queryText = `SELECT * FROM TABLES`;
   const queryHelper = [];
+  if (req.params.number !== undefined) {
+    queryHelper.push(`number = ${req.params.number}`);
+  }
   if (req.query.vacant !== undefined) {
     queryHelper.push(`vacant = ${req.query.vacant === `true`}`);
   }
