@@ -61,14 +61,11 @@ const constraints = {
     query: {
       arguments: [
         {
-          acceptableValues: [
-            `false`,
-            `true`
-          ],
+          acceptableValues: [],
           dependencies: {},
-          isNumber: false,
+          isNumber: true,
           isRequired: false,
-          key: `vacant`
+          key: `count`
         },
         {
           acceptableValues: [
@@ -83,19 +80,15 @@ const constraints = {
           key: `type`
         },
         {
-          acceptableValues: [],
+          acceptableValues: [
+            `false`,
+            `true`
+          ],
           dependencies: {},
-          isNumber: true,
+          isNumber: false,
           isRequired: false,
-          key: `count`
+          key: `vacant`
         },
-        {
-          acceptableValues: [],
-          dependencies: {},
-          isNumber: true,
-          isRequired: false,
-          key: `count`
-        }
       ],
       max: 3,
       min: 0
@@ -239,9 +232,9 @@ app.get(`/api/v1/guests`, (req, res) => {
 // params:
 //   number?=(number)
 // query:
-//   vacant?=(true,false)
-//   type?=(booth,deuce,hightop,table)
 //   count?=(number)
+//   type?=(booth,deuce,hightop,table)
+//   vacant?=(true,false)
 app.get(`/api/v1/tables/:number`, (req, res) => {
   // ensure validity of body/params/query arguments
   const checkerVerdict = requestValidator.requestChecker(req, constraints.getApiV1Tables);
@@ -254,18 +247,15 @@ app.get(`/api/v1/tables/:number`, (req, res) => {
 
   let queryText = `SELECT * FROM TABLES`;
   const queryHelper = [];
+  const queryArguments = [`count`, `type`, `vacant`];
   if (req.params.number !== undefined) {
     queryHelper.push(`number = ${req.params.number}`);
   }
-  if (req.query.vacant !== undefined) {
-    queryHelper.push(`vacant = ${req.query.vacant === `true`}`);
-  }
-  if (req.query.type !== undefined) {
-    queryHelper.push(`type = '${req.query.type}'`);
-  }
-  if (req.query.count !== undefined) {
-    queryHelper.push(`count = ${req.query.count}`);
-  }
+  queryArguments.forEach((queryArgument) => {
+    if (queryArgument !== undefined) {
+      queryHelper.push(`${queryArgument} = ${req.query[`${queryArgument}`]}`);
+    }
+  });
   if (queryHelper.length !== 0) {
     queryText = `${queryText} WHERE ${queryHelper.join(` AND `)}`;
   }
