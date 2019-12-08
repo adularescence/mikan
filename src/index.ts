@@ -57,8 +57,20 @@ const constraints = {
           isRequired: false,
           key: `vacant`
         },
+        {
+          acceptableValues: [
+            `booth`,
+            `deuce`,
+            `hightop`,
+            `table`
+          ],
+          dependencies: {},
+          isNumber: false,
+          isRequired: false,
+          key: `type`
+        }
       ],
-      max: 1,
+      max: 2,
       min: 0
     }
   }),
@@ -156,42 +168,6 @@ const constraints = {
 
 /* GET */
 
-// table list
-// query:
-//   vacant?=(true,false)
-app.get(`/api/v1/tables`, (req, res) => {
-  // ensure validity of body/params/query arguments
-  const checkerVerdict = requestValidator.requestChecker(req, constraints.getApiV1Tables);
-  if (checkerVerdict !== ``) {
-    return res.status(400).send({
-      message: checkerVerdict,
-      success: false
-    });
-  }
-
-  let queryText = `SELECT * FROM TABLES`;
-  const queryHelper = [];
-  if (req.query.vacant !== undefined) {
-    queryHelper.push(`vacant = ${req.query.vacant === `true`}`);
-  }
-  if (queryHelper.length !== 0) {
-    queryText = `${queryText} WHERE ${queryHelper.join(` AND `)}`;
-  }
-  pgClient.query(queryText).then((dbRes) => {
-    return res.status(200).send({
-      data: dbRes.rows,
-      message: `tables retrieved successfully`,
-      success: `true`
-    });
-  }).catch((e: Error) => {
-    return res.status(400).send({
-      message: e.stack,
-      query: queryText,
-      success: false
-    });
-  });
-});
-
 // guest list
 // query:
 //   count?=(number)
@@ -222,6 +198,47 @@ app.get(`/api/v1/guests`, (req, res) => {
       data: dbRes.rows,
       message: `guest list retrieved successfully`,
       success: true
+    });
+  }).catch((e: Error) => {
+    return res.status(400).send({
+      message: e.stack,
+      query: queryText,
+      success: false
+    });
+  });
+});
+
+// table list
+// query:
+//   vacant?=(true,false)
+//   type?=(booth,deuce,hightop,table)
+//
+app.get(`/api/v1/tables`, (req, res) => {
+  // ensure validity of body/params/query arguments
+  const checkerVerdict = requestValidator.requestChecker(req, constraints.getApiV1Tables);
+  if (checkerVerdict !== ``) {
+    return res.status(400).send({
+      message: checkerVerdict,
+      success: false
+    });
+  }
+
+  let queryText = `SELECT * FROM TABLES`;
+  const queryHelper = [];
+  if (req.query.vacant !== undefined) {
+    queryHelper.push(`vacant = ${req.query.vacant === `true`}`);
+  }
+  if (req.query.type !== undefined) {
+    queryHelper.push(`type = '${req.query.type}'`);
+  }
+  if (queryHelper.length !== 0) {
+    queryText = `${queryText} WHERE ${queryHelper.join(` AND `)}`;
+  }
+  pgClient.query(queryText).then((dbRes) => {
+    return res.status(200).send({
+      data: dbRes.rows,
+      message: `tables retrieved successfully`,
+      success: `true`
     });
   }).catch((e: Error) => {
     return res.status(400).send({
