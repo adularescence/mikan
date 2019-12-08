@@ -68,9 +68,23 @@ const constraints = {
           isNumber: false,
           isRequired: false,
           key: `type`
+        },
+        {
+          acceptableValues: [],
+          dependencies: {},
+          isNumber: true,
+          isRequired: false,
+          key: `count`
+        },
+        {
+          acceptableValues: [],
+          dependencies: {},
+          isNumber: true,
+          isRequired: false,
+          key: `count`
         }
       ],
-      max: 2,
+      max: 3,
       min: 0
     }
   }),
@@ -212,7 +226,7 @@ app.get(`/api/v1/guests`, (req, res) => {
 // query:
 //   vacant?=(true,false)
 //   type?=(booth,deuce,hightop,table)
-//
+//   count?=(number)
 app.get(`/api/v1/tables`, (req, res) => {
   // ensure validity of body/params/query arguments
   const checkerVerdict = requestValidator.requestChecker(req, constraints.getApiV1Tables);
@@ -230,6 +244,9 @@ app.get(`/api/v1/tables`, (req, res) => {
   }
   if (req.query.type !== undefined) {
     queryHelper.push(`type = '${req.query.type}'`);
+  }
+  if (req.query.count !== undefined) {
+    queryHelper.push(`count = ${req.query.count}`);
   }
   if (queryHelper.length !== 0) {
     queryText = `${queryText} WHERE ${queryHelper.join(` AND `)}`;
