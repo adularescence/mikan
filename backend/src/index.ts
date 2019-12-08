@@ -251,9 +251,10 @@ app.get(`/api/v1/tables/:number`, (req, res) => {
   if (req.params.number !== undefined) {
     queryHelper.push(`number = ${req.params.number}`);
   }
-  queryArguments.forEach((queryArgument) => {
+  queryArguments.forEach((queryArgumentKey) => {
+    const queryArgument = req.query[`${queryArgumentKey}`];
     if (queryArgument !== undefined) {
-      queryHelper.push(`${queryArgument} = ${req.query[`${queryArgument}`]}`);
+      queryHelper.push(`${queryArgumentKey} = ${queryArgument}`);
     }
   });
   if (queryHelper.length !== 0) {
