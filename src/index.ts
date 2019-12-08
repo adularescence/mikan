@@ -333,9 +333,25 @@ app.put(`/api/v1/guests/:id`, (req, res) => {
       });
     };
 
+    const updateTable = (targetVacancy: boolean) => {
+      const tableUpdateQueryText = `UPDATE tables SET vacant = ${targetVacancy} WHERE number = ${tableNumber} RETURNING *`;
+      pgClient.query(tableUpdateQueryText).then((tableUpdateRes) => {
+        const extraInfo = targetVacancy === true ?
+          ` Seated at table #${tableUpdateRes.rows[0].number}.` :
+          ` Guests at table #${tableUpdateRes.rows[0].number} have left.`;
+        updateGuest(extraInfo);
+      }).catch((e: Error) => {
+        return res.status(400).send({
+          message: e.stack,
+          query: tableUpdateQueryText,
+          success: false
+        });
+      });
+    };
+
+    const tableNumber = req.query.tableNumber;
     if (target === `seated`) {
-      const tableNumber = req.query.tableNumber;
-      const vacancyQueryText = `SELECT vacant, count FROM tables WHERE number = ${tableNumber}`;
+      const vacancyQueryText = `SELECT vacant FROM tables WHERE number = ${tableNumber}`;
       pgClient.query(vacancyQueryText).then((vacancyRes) => {
         if (vacancyRes.rows[0].vacant === false) {
           return res.status(400).send({
@@ -343,16 +359,7 @@ app.put(`/api/v1/guests/:id`, (req, res) => {
             success: false
           });
         } else {
-          const tableUpdateQueryText = `UPDATE tables SET vacant = false WHERE number = ${tableNumber} RETURNING *`;
-          pgClient.query(tableUpdateQueryText).then((tableUpdateRes) => {
-            updateGuest(` Seated at table #${tableUpdateRes.rows[0].number}.`);
-          }).catch((e: Error) => {
-            return res.status(400).send({
-              message: e.stack,
-              query: tableUpdateQueryText,
-              success: false
-            });
-          });
+          updateTable(false);
         }
       }).catch((e: Error) => {
         return res.status(400).send({
@@ -362,9 +369,15 @@ app.put(`/api/v1/guests/:id`, (req, res) => {
         });
       });
     } else if (target === `exited`) {
-      // TODO: unseat table
-      // need to add column to tables, and add column to guests
-      updateGuest();
+      if (tableNumber === undefined) {
+        // lack of tableNumber indicates that guest left before being seated (maybe waited too long, or they're busy)
+        // need to update guest entry only
+        updateGuest(` They seem to have left before being seated.`);
+      } else {
+        // presence of tableNumber indicates that guest has been seated
+        // need to update table and guest entries
+        updateTable(true);
+      }
     } else {
       updateGuest();
     }
